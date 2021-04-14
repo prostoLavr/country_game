@@ -3,8 +3,8 @@ import os
 import random
 from PIL import Image
 
-WIDTH = 720
-HEIGHT = 480
+WIDTH = 750
+HEIGHT = 500
 FPS = 30
 
 BLACK = (0, 0, 0)
@@ -17,15 +17,12 @@ BACKGROUND_COLOR = (197, 30, 30)
 
 DED_WIDTH = 50
 DED_SPEED = 7
-DED_STEP_SPEED = 3
+DED_STEP_SPEED = 3 # The less number the faster steps.
 
+GROW_SPEED = 10
+BLOCK_SIZE = 50
 
-class Block(pygame.sprite.Sprite):
-    def __init__(self, coord, world_obj:World):
-        pygame.sprite.Sprite.__init__(self)
-        self.seed = random.randint(0, 4)
-        #TODO: do something here
-
+WORLD_MAP_DICT = {}
 
 
 class ResizeImg:
@@ -47,9 +44,10 @@ class ResizeImg:
 
 
 class World:
-    def __init__(self):
+    def __init__(self, map_dict:dict):
         self.x = 0
         self.y = 0
+        self.map_dict = map_dict
 
     def right(self):
         self.x += 1
@@ -87,6 +85,45 @@ class World:
             return True
         return False
 
+
+class Plant(pygame.sprite.Sprite):
+    def __init__(self, coord, world_obj:World):
+        pygame.sprite.Sprite.__init__(self)
+        self.seed = random.randint(0, 4)
+        self.coord = coord
+        self.n_grow = 0
+
+    def grow(self):
+        self.n_grow += GROW_SPEED
+
+    def update(self):
+        pass
+
+    def set_rect_and_coord(self):
+        self.rect = self.image.get_rect()
+        self.rect.center = (WIDTH / 2, HEIGHT / 2)
+        self.rect.x = self.coord[0]
+        self.rect.y = self.coord[1]
+
+
+class Grass(Plant):
+    def __init__(self, *args, image=None):
+        Plant.__init__(self, *args)
+
+        if image is None:
+            game_folder = os.path.dirname(__file__)
+            img_folder = os.path.join(game_folder, 'img')
+            resize_img = ResizeImg(os.path.join(img_folder, 'grass1.png'), w=BLOCK_SIZE).get_filename()
+            player_img = pygame.image.load(resize_img).convert()
+            self.image = player_img
+        else:
+            self.image = image
+        self.set_rect_and_coord()
+
+
+
+    def update(self):
+        pass
 
 class Person(pygame.sprite.Sprite):
     def __init__(self, coord, texture, world_obj:World):
@@ -174,28 +211,38 @@ class Game:
 
     def init_game(self):
         pygame.init()
-        # pygame.mixer.init()  # Для звука
         self.screen = pygame.display.set_mode((WIDTH, HEIGHT))
         pygame.display.set_caption("My Game")
         self.clock = pygame.time.Clock()
         self.all_sprites = pygame.sprite.Group()
+        self.world = World(WORLD_MAP_DICT)
+        self.grass_init()
+        self.ded_init()
 
+
+    def grass_init(self):  # Будет удаленно!
+        game_folder = os.path.dirname(__file__)
+        img_folder = os.path.join(game_folder, 'img')
+        resize_img = ResizeImg(os.path.join(img_folder, 'grass1.png'), w=BLOCK_SIZE).get_filename()
+        img = pygame.image.load(resize_img).convert()
+        for i in range(0, WIDTH, BLOCK_SIZE):
+            for j in range(0, HEIGHT, BLOCK_SIZE):
+                grass = Grass([i, j], self.world, image=img)
+                self.all_sprites.add(grass)
+
+    def ded_init(self):
         game_folder = os.path.dirname(__file__)
         img_folder = os.path.join(game_folder, 'img')
         ded_textures = []
-
-        self.world = World()
-
         for i in ['ded.png', 'ded1.png', 'ded2.png']:
             resize_img = ResizeImg(os.path.join(img_folder, i), w=DED_WIDTH).get_filename()
             player_img = pygame.image.load(resize_img).convert()
             ded_textures.append(player_img)
-
         self.ded = Person([100, 100], ded_textures, self.world)
         self.all_sprites.add(self.ded)
 
-        self.block
 
+    # Обработка событий
     def game_loop(self):
         left_flag = False
         right_flag = False
