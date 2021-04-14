@@ -2,6 +2,7 @@ import pygame
 import os
 import random
 from PIL import Image
+import blocks
 
 WIDTH = 750
 HEIGHT = 500
@@ -44,10 +45,24 @@ class ResizeImg:
 
 
 class World:
-    def __init__(self, map_dict:dict):
+    def __init__(self, map_dict=None):
         self.x = 0
         self.y = 0
-        self.map_dict = map_dict
+        self.generate(map_dict)
+
+
+    def generate(self, map_dict):
+        obj_map_list = []
+        for i, k, v in enumerate(map_dict.items()):
+            tmp_lst = []
+            for j, obj_str in enumerate(v):
+                if obj_str == 'grass':
+                    tmp_lst.append(Grass([i*BLOCK_SIZE, j*BLOCK_SIZE], self, TextureLoader().get_textures('grass')))
+            obj_map_list.update({(i, j): tmp_lst})
+        self.obj_map_list = obj_map_list
+
+    def get_lst(self):
+        return self.obj_map_list[(self.x, self.y)]
 
     def right(self):
         self.x += 1
@@ -89,7 +104,7 @@ class World:
 class Plant(pygame.sprite.Sprite):
     def __init__(self, coord, world_obj:World):
         pygame.sprite.Sprite.__init__(self)
-        self.seed = random.randint(0, 4)
+        self.seed = random.randint(0, 3)
         self.coord = coord
         self.n_grow = 0
 
@@ -107,23 +122,11 @@ class Plant(pygame.sprite.Sprite):
 
 
 class Grass(Plant):
-    def __init__(self, *args, image=None):
+    def __init__(self, *args, image_list):
         Plant.__init__(self, *args)
-
-        if image is None:
-            game_folder = os.path.dirname(__file__)
-            img_folder = os.path.join(game_folder, 'img')
-            resize_img = ResizeImg(os.path.join(img_folder, 'grass1.png'), w=BLOCK_SIZE).get_filename()
-            player_img = pygame.image.load(resize_img).convert()
-            self.image = player_img
-        else:
-            self.image = image
+        self.image = image_list[self.seed]
         self.set_rect_and_coord()
 
-
-
-    def update(self):
-        pass
 
 class Person(pygame.sprite.Sprite):
     def __init__(self, coord, texture, world_obj:World):
@@ -204,9 +207,38 @@ class Person(pygame.sprite.Sprite):
         self.step = False
 
 
+class TextureLoader:
+    def __init__(self):
+        game_folder = os.path.dirname(__file__)
+        self.img_folder = os.path.join(game_folder, 'img')
+
+    def get_textures(self, folder):
+        local_folder = os.path.join(self.img_folder, folder)
+        img_list = []
+        for i in os.walk(local_folder):
+            for j in i[-1]:
+                if 'resize' not in j:
+                    ResizeImg(os.path.join(local_folder, j), w=BLOCK_SIZE).get_filename()
+                    resize_img = os.path.join(local_folder, j+'_resize.png')
+                    img_list.append(pygame.image.load(resize_img).convert())
+            return img_list
+
+
+class MapMaker:
+    def __init__(self, lst):
+        out_list = []
+        for num_i, i in enumerate(lst):
+            tmp_list = []
+            for num_j, j in i:
+                if j == 'grass':
+                    tmp_list.append(Grass([i*BLOCK_SIZE, j*BLOCK_SIZE], world, image_list=TextureLoader.get_textures()))
+
+
+
 class Game:
     def __init__(self):
         self.init_game()
+        TextureLoader().get_textures('ded')
         self.game_loop()
 
     def init_game(self):
@@ -216,29 +248,11 @@ class Game:
         self.clock = pygame.time.Clock()
         self.all_sprites = pygame.sprite.Group()
         self.world = World(WORLD_MAP_DICT)
-        self.grass_init()
         self.ded_init()
 
 
-    def grass_init(self):  # Будет удаленно!
-        game_folder = os.path.dirname(__file__)
-        img_folder = os.path.join(game_folder, 'img')
-        resize_img = ResizeImg(os.path.join(img_folder, 'grass1.png'), w=BLOCK_SIZE).get_filename()
-        img = pygame.image.load(resize_img).convert()
-        for i in range(0, WIDTH, BLOCK_SIZE):
-            for j in range(0, HEIGHT, BLOCK_SIZE):
-                grass = Grass([i, j], self.world, image=img)
-                self.all_sprites.add(grass)
-
     def ded_init(self):
-        game_folder = os.path.dirname(__file__)
-        img_folder = os.path.join(game_folder, 'img')
-        ded_textures = []
-        for i in ['ded.png', 'ded1.png', 'ded2.png']:
-            resize_img = ResizeImg(os.path.join(img_folder, i), w=DED_WIDTH).get_filename()
-            player_img = pygame.image.load(resize_img).convert()
-            ded_textures.append(player_img)
-        self.ded = Person([100, 100], ded_textures, self.world)
+        self.ded = Person([100, 100], TextureLoader().get_textures('ded'), self.world)
         self.all_sprites.add(self.ded)
 
 
