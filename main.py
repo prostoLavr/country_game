@@ -2,7 +2,7 @@ import pygame
 import os
 import random
 from PIL import Image
-import blocks
+# import blocks
 
 WIDTH = 750
 HEIGHT = 500
@@ -18,7 +18,7 @@ BACKGROUND_COLOR = (197, 30, 30)
 
 DED_WIDTH = 50
 DED_SPEED = 7
-DED_STEP_SPEED = 3 # The less number the faster steps.
+DED_STEP_SPEED = 3  # The less number the faster steps.
 
 GROW_SPEED = 10
 BLOCK_SIZE = 50
@@ -50,14 +50,14 @@ class World:
         self.y = 0
         self.generate(map_dict)
 
-
     def generate(self, map_dict):
         obj_map_list = []
         for i, k, v in enumerate(map_dict.items()):
             tmp_lst = []
             for j, obj_str in enumerate(v):
                 if obj_str == 'grass':
-                    tmp_lst.append(Grass([i*BLOCK_SIZE, j*BLOCK_SIZE], self, TextureLoader().get_textures('grass')))
+                    tmp_lst.append(Grass([i * BLOCK_SIZE, j * BLOCK_SIZE],
+                                         self, TextureLoader().get_textures('grass')))
             obj_map_list.update({(i, j): tmp_lst})
         self.obj_map_list = obj_map_list
 
@@ -102,7 +102,7 @@ class World:
 
 
 class Plant(pygame.sprite.Sprite):
-    def __init__(self, coord, world_obj:World):
+    def __init__(self, coord):
         pygame.sprite.Sprite.__init__(self)
         self.seed = random.randint(0, 3)
         self.coord = coord
@@ -129,7 +129,7 @@ class Grass(Plant):
 
 
 class Person(pygame.sprite.Sprite):
-    def __init__(self, coord, texture, world_obj:World):
+    def __init__(self, coord, texture, world_obj: World):
         pygame.sprite.Sprite.__init__(self)
         self.now = 0
         self.texture = texture
@@ -216,12 +216,13 @@ class TextureLoader:
         local_folder = os.path.join(self.img_folder, folder)
         img_list = []
         for i in os.walk(local_folder):
+            print('Iter!')
             for j in i[-1]:
                 if 'resize' not in j:
                     ResizeImg(os.path.join(local_folder, j), w=BLOCK_SIZE).get_filename()
-                    resize_img = os.path.join(local_folder, j+'_resize.png')
+                    resize_img = os.path.join(local_folder, j + '_resize.png')
                     img_list.append(pygame.image.load(resize_img).convert())
-            return img_list
+        return img_list
 
 
 class MapMaker:
@@ -231,14 +232,14 @@ class MapMaker:
             tmp_list = []
             for num_j, j in i:
                 if j == 'grass':
-                    tmp_list.append(Grass([i*BLOCK_SIZE, j*BLOCK_SIZE], world, image_list=TextureLoader.get_textures()))
-
+                    tmp_list.append(
+                        Grass([i * BLOCK_SIZE, j * BLOCK_SIZE],
+                              image_list=TextureLoader().get_textures('grass')))
 
 
 class Game:
     def __init__(self):
         self.init_game()
-        TextureLoader().get_textures('ded')
         self.game_loop()
 
     def init_game(self):
@@ -250,11 +251,9 @@ class Game:
         self.world = World(WORLD_MAP_DICT)
         self.ded_init()
 
-
     def ded_init(self):
         self.ded = Person([100, 100], TextureLoader().get_textures('ded'), self.world)
         self.all_sprites.add(self.ded)
-
 
     # Обработка событий
     def game_loop(self):
