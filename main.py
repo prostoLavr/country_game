@@ -210,7 +210,7 @@ class Person(pygame.sprite.Sprite):
 class TextureLoader:
     def __init__(self):
         game_folder = os.path.dirname(__file__)
-        self.img_folder = os.path.join(game_folder, 'img')
+        self.img_folder = os.path.join(game_folder, 'res', 'images')
 
     def get_textures(self, folder):
         local_folder = os.path.join(self.img_folder, folder)
