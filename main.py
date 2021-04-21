@@ -14,11 +14,16 @@ RED = (255, 0, 0)
 GREEN = (0, 255, 0)
 BLUE = (0, 0, 255)
 
+FORWARD = 0
+BACKWARD = 1
+RIGHT = 2
+LEFT = 3
+
 BACKGROUND_COLOR = (197, 30, 30)
 
 DED_WIDTH = 50
-DED_SPEED = 7
-DED_STEP_SPEED = 3  # The less number the faster steps.
+DED_SPEED = 3
+DED_STEP_SPEED = 7  # The less number the faster steps.
 
 GROW_SPEED = 10
 BLOCK_SIZE = 50
@@ -61,8 +66,9 @@ class World:
                     tmp_lst = []
                     for j, obj_str in enumerate(v):
                         if obj_str == 'grass':
-                            tmp_lst.append(Grass(TextureLoader().get_textures('grass'),
-                                                 [i * BLOCK_SIZE, j * BLOCK_SIZE]))
+                            tmp_lst.append(Grass([j * BLOCK_SIZE, i * BLOCK_SIZE]))
+                        if obj_str == 'ground':
+                            tmp_lst.append(Ground([j * BLOCK_SIZE, i * BLOCK_SIZE]))
                     tmp_lst1.append(tmp_lst)
                 tmp_lst2.append(tmp_lst1)
             obj_map_list.append(tmp_lst2)
@@ -129,18 +135,25 @@ class Plant(pygame.sprite.Sprite):
 
 
 class Grass(Plant):
-    def __init__(self, image_list, *args):
+    def __init__(self, *args):
         Plant.__init__(self, *args)
-        self.image = image_list[1]
+        self.image = TextureLoader().get_textures('grass')[self.seed//2]
         self.set_rect_and_coord()
 
 
-class Person(pygame.sprite.Sprite):
-    def __init__(self, coord, texture, world_obj: World):
+class Ground(Plant):
+    def __init__(self, *args):
+        Plant.__init__(self, *args)
+        self.image = TextureLoader().get_textures('ground')[0]
+        self.set_rect_and_coord()
+
+
+class Ded(pygame.sprite.Sprite):
+    def __init__(self, coord, world_obj: World):
         pygame.sprite.Sprite.__init__(self)
         self.now = 0
-        self.texture = texture
-        self.image = self.texture[0]
+        self.texture = TextureLoader().get_person_textures('ded')
+        self.image = self.texture[0][0]
         self.image.set_colorkey(BACKGROUND_COLOR)
         self.rect = self.image.get_rect()
         self.rect.center = (WIDTH / 2, HEIGHT / 2)
@@ -148,31 +161,37 @@ class Person(pygame.sprite.Sprite):
         self.world = world_obj
         self.coord = coord
         self.step = False
+        self.side = 0
 
     def go_forward(self, delta):
-        self.coord[1] -= delta
-        self.step = True
-
-    def go_backward(self, delta):
         self.coord[1] += delta
         self.step = True
+        self.side = FORWARD
+
+    def go_backward(self, delta):
+        self.coord[1] -= delta
+        self.step = True
+        self.side = BACKWARD
 
     def go_left(self, delta):
         self.coord[0] -= delta
         self.step = True
+        self.side = LEFT
 
     def go_right(self, delta):
         self.coord[0] += delta
         self.step = True
+        self.side = RIGHT
 
     def update(self):
         self.rect.x = self.coord[0]
         self.rect.y = self.coord[1]
         if self.step:
-            self.now = (self.now + 1) % (len(self.texture) * DED_STEP_SPEED)
+            self.now = (self.now + 1) % ((len(self.texture[self.side][1:])) * DED_STEP_SPEED)
+            self.image = self.texture[self.side][1:][self.now // DED_STEP_SPEED]
         else:
             self.now = 0
-        self.image = self.texture[self.now // DED_STEP_SPEED]
+            self.image = self.texture[self.side][0]
         self.image.set_colorkey(BACKGROUND_COLOR)
 
         if self.rect.right > WIDTH:
@@ -222,13 +241,35 @@ class TextureLoader:
     def get_textures(self, folder):
         local_folder = os.path.join(self.img_folder, folder)
         img_list = []
-        for i in os.walk(local_folder):
+        for i in os.walk(os.path.join(local_folder)):
             for j in i[-1]:
                 if 'resize' not in j:
                     ResizeImg(os.path.join(local_folder, j), w=BLOCK_SIZE).get_filename()
                     resize_img = os.path.join(local_folder, j + '_resize.png')
                     img_list.append(pygame.image.load(resize_img).convert())
         return img_list
+
+    def get_person_textures(self, folder):
+        left_list = []
+        right_list = []
+        forward_list = []
+        backward_list = []
+        for side_folder in ['forward', 'backward', 'right', 'left']:
+            local_folder = os.path.join(self.img_folder, folder, side_folder)
+            for i in os.walk(os.path.join(local_folder)):
+                for j in i[-1]:
+                    if 'resize' not in j:
+                        ResizeImg(os.path.join(local_folder, j), w=BLOCK_SIZE).get_filename()
+                        resize_img = os.path.join(local_folder, j + '_resize.png')
+                        if 'forward' == side_folder:
+                            forward_list.append(pygame.image.load(resize_img).convert())
+                        if 'backward' == side_folder:
+                            backward_list.append(pygame.image.load(resize_img).convert())
+                        if 'right' == side_folder:
+                            right_list.append(pygame.image.load(resize_img).convert())
+                        if 'left' == side_folder:
+                            left_list.append(pygame.image.load(resize_img).convert())
+        return [forward_list, backward_list, right_list, left_list]
 
 
 class Game:
@@ -246,7 +287,7 @@ class Game:
         self.ded_init()
 
     def ded_init(self):
-        self.ded = Person([100, 100], TextureLoader().get_textures('ded'), self.world)
+        self.ded = Ded([100, 100], self.world)
         self.ded_grp.add(self.ded)
 
     # Обработка событий
@@ -291,9 +332,9 @@ class Game:
             if right_flag:
                 self.ded.go_right(DED_SPEED)
             if forward_flag:
-                self.ded.go_forward(DED_SPEED)
-            if backward_flag:
                 self.ded.go_backward(DED_SPEED)
+            if backward_flag:
+                self.ded.go_forward(DED_SPEED)
 
             pygame.display.flip()
             self.clock.tick(FPS)
