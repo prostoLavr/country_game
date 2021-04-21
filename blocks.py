@@ -1,5 +1,5 @@
-map_dict = {
-    (0, 0):[
+map_lst = [
+    [
     ['grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass',
      'grass', 'grass', 'grass'],
     ['grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass',
@@ -21,4 +21,4 @@ map_dict = {
     ['grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass',
      'grass', 'grass', 'grass']
     ]
-}
+]

@@ -2,7 +2,7 @@ import pygame
 import os
 import random
 from PIL import Image
-# import blocks
+import blocks
 
 WIDTH = 750
 HEIGHT = 500
@@ -23,7 +23,8 @@ DED_STEP_SPEED = 3  # The less number the faster steps.
 GROW_SPEED = 10
 BLOCK_SIZE = 50
 
-WORLD_MAP_DICT = {}
+
+WORLD_MAP_DICT = blocks.map_lst
 
 
 class ResizeImg:
@@ -52,17 +53,18 @@ class World:
 
     def generate(self, map_dict):
         obj_map_list = []
-        for i, k, v in enumerate(map_dict.items()):
+        for i, v in enumerate(map_dict):
             tmp_lst = []
             for j, obj_str in enumerate(v):
                 if obj_str == 'grass':
                     tmp_lst.append(Grass([i * BLOCK_SIZE, j * BLOCK_SIZE],
-                                         self, TextureLoader().get_textures('grass')))
-            obj_map_list.update({(i, j): tmp_lst})
+                                         self, image_list=TextureLoader().get_textures('grass')))
+            obj_map_list.append(tmp_lst)
         self.obj_map_list = obj_map_list
+        print(self.obj_map_list)
 
     def get_lst(self):
-        return self.obj_map_list[(self.x, self.y)]
+        return self.obj_map_list[self.y][self.x]
 
     def right(self):
         self.x += 1
@@ -216,25 +218,12 @@ class TextureLoader:
         local_folder = os.path.join(self.img_folder, folder)
         img_list = []
         for i in os.walk(local_folder):
-            print('Iter!')
             for j in i[-1]:
                 if 'resize' not in j:
                     ResizeImg(os.path.join(local_folder, j), w=BLOCK_SIZE).get_filename()
                     resize_img = os.path.join(local_folder, j + '_resize.png')
                     img_list.append(pygame.image.load(resize_img).convert())
         return img_list
-
-
-class MapMaker:
-    def __init__(self, lst):
-        out_list = []
-        for num_i, i in enumerate(lst):
-            tmp_list = []
-            for num_j, j in i:
-                if j == 'grass':
-                    tmp_list.append(
-                        Grass([i * BLOCK_SIZE, j * BLOCK_SIZE],
-                              image_list=TextureLoader().get_textures('grass')))
 
 
 class Game:
