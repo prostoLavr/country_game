@@ -24,7 +24,7 @@ GROW_SPEED = 10
 BLOCK_SIZE = 50
 
 
-WORLD_MAP_DICT = blocks.map_lst
+WORLD_MAP = blocks.map_lst
 
 
 class ResizeImg:
@@ -53,15 +53,20 @@ class World:
 
     def generate(self, map_dict):
         obj_map_list = []
-        for i, v in enumerate(map_dict):
-            tmp_lst = []
-            for j, obj_str in enumerate(v):
-                if obj_str == 'grass':
-                    tmp_lst.append(Grass([i * BLOCK_SIZE, j * BLOCK_SIZE],
-                                         self, image_list=TextureLoader().get_textures('grass')))
-            obj_map_list.append(tmp_lst)
+        for y_world, value1 in enumerate(map_dict):
+            tmp_lst2 = []
+            for x_world, value2 in enumerate(value1):
+                tmp_lst1 = []
+                for i, v in enumerate(value2):
+                    tmp_lst = []
+                    for j, obj_str in enumerate(v):
+                        if obj_str == 'grass':
+                            tmp_lst.append(Grass(TextureLoader().get_textures('grass'),
+                                                 [i * BLOCK_SIZE, j * BLOCK_SIZE]))
+                    tmp_lst1.append(tmp_lst)
+                tmp_lst2.append(tmp_lst1)
+            obj_map_list.append(tmp_lst2)
         self.obj_map_list = obj_map_list
-        print(self.obj_map_list)
 
     def get_lst(self):
         return self.obj_map_list[self.y][self.x]
@@ -124,9 +129,9 @@ class Plant(pygame.sprite.Sprite):
 
 
 class Grass(Plant):
-    def __init__(self, *args, image_list):
+    def __init__(self, image_list, *args):
         Plant.__init__(self, *args)
-        self.image = image_list[self.seed]
+        self.image = image_list[1]
         self.set_rect_and_coord()
 
 
@@ -236,13 +241,13 @@ class Game:
         self.screen = pygame.display.set_mode((WIDTH, HEIGHT))
         pygame.display.set_caption("My Game")
         self.clock = pygame.time.Clock()
-        self.all_sprites = pygame.sprite.Group()
-        self.world = World(WORLD_MAP_DICT)
+        self.ded_grp = pygame.sprite.Group()
+        self.world = World(WORLD_MAP)
         self.ded_init()
 
     def ded_init(self):
         self.ded = Person([100, 100], TextureLoader().get_textures('ded'), self.world)
-        self.all_sprites.add(self.ded)
+        self.ded_grp.add(self.ded)
 
     # Обработка событий
     def game_loop(self):
@@ -252,9 +257,14 @@ class Game:
         backward_flag = False
         running = True
         while running:
-            self.all_sprites.update()
+            self.map_now = pygame.sprite.Group()
+            for i in self.world.get_lst():
+                self.map_now.add(i)
+            self.map_now.update()
+            self.ded_grp.update()
             self.screen.fill(WHITE)
-            self.all_sprites.draw(self.screen)
+            self.map_now.draw(self.screen)
+            self.ded_grp.draw(self.screen)
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     running = False
