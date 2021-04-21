@@ -1,9 +1,15 @@
-import pygame
 import os
 import random
-from PIL import Image
-import blocks
+
 import dill
+import pygame
+from PIL import Image
+
+import blocks
+
+
+GROW_SPEED = 10
+BLOCK_SIZE = 50
 
 WIDTH = 750
 HEIGHT = 500
@@ -26,11 +32,14 @@ DED_WIDTH = 50
 DED_SPEED = 5
 DED_STEP_SPEED = 5  # The less number the faster steps.
 
-GROW_SPEED = 10
-BLOCK_SIZE = 50
-
+OPEN_SAVE = True
+FILE_SAVE = 'save'
 
 WORLD_MAP = blocks.map_lst
+
+if OPEN_SAVE:
+    with open(FILE_SAVE, 'rb') as file:
+        LOAD_DATA = dill.load(file)
 
 
 class ResizeImg:
@@ -52,13 +61,14 @@ class ResizeImg:
 
 
 class World:
-    def __init__(self, map_dict=None):
-        self.x = 0
-        self.y = 0
+    def __init__(self, map_dict, x=0, y=0):
+        self.x = x
+        self.y = y
         self.generate(map_dict)
 
     def generate(self, map_dict):
         obj_map_list = []
+        up_obj_map_list = []
         for y_world, value1 in enumerate(map_dict):
             tmp_lst2 = []
             for x_world, value2 in enumerate(value1):
@@ -70,17 +80,19 @@ class World:
                             tmp_lst.append(Grass([j * BLOCK_SIZE, i * BLOCK_SIZE]))
                         if obj_str == 'ground':
                             tmp_lst.append(Ground([j * BLOCK_SIZE, i * BLOCK_SIZE]))
+                        if obj_str == 'house':
+                            up_obj_map_list.append(House([j * BLOCK_SIZE, i * BLOCK_SIZE]))
                     tmp_lst1.append(tmp_lst)
                 tmp_lst2.append(tmp_lst1)
             obj_map_list.append(tmp_lst2)
         self.obj_map_list = obj_map_list
+        self.up_obj_map_list = up_obj_map_list
 
     def get_lst(self):
         return self.obj_map_list[self.y][self.x]
 
     def right(self):
         self.x += 1
-        print(self.x, self.y)
 
     def is_right(self):
         if self.x < 1:
@@ -89,7 +101,6 @@ class World:
 
     def left(self):
         self.x -= 1
-        print(self.x, self.y)
 
     def is_left(self):
         if self.x > 0:
@@ -98,7 +109,6 @@ class World:
 
     def up(self):
         self.y += 1
-        print(self.x, self.y)
 
     def is_up(self):
         if self.y < 1:
@@ -107,7 +117,6 @@ class World:
 
     def down(self):
         self.y -= 1
-        print(self.x, self.y)
 
     def is_down(self):
         if self.y > 0:
@@ -138,7 +147,7 @@ class Plant(pygame.sprite.Sprite):
 class Grass(Plant):
     def __init__(self, *args):
         Plant.__init__(self, *args)
-        self.image = TextureLoader().get_textures('grass')[self.seed//2]
+        self.image = TextureLoader().get_textures('grass')[self.seed // 2]
         self.set_rect_and_coord()
 
 
@@ -147,6 +156,20 @@ class Ground(Plant):
         Plant.__init__(self, *args)
         self.image = TextureLoader().get_textures('ground')[0]
         self.set_rect_and_coord()
+
+
+class House(pygame.sprite.Sprite):
+    def __init__(self, coord):
+        pygame.sprite.Sprite.__init__(self)
+        self.coord = coord
+        self.image = TextureLoader().get_textures('house', 150)[0]
+        self.set_rect_and_coord()
+
+    def set_rect_and_coord(self):
+        self.rect = self.image.get_rect()
+        self.rect.center = (WIDTH / 2, HEIGHT / 2)
+        self.rect.x = self.coord[0]
+        self.rect.y = self.coord[1]
 
 
 class Ded(pygame.sprite.Sprite):
@@ -244,13 +267,13 @@ class TextureLoader:
         game_folder = os.path.dirname(__file__)
         self.img_folder = os.path.join(game_folder, 'res', 'images')
 
-    def get_textures(self, folder):
+    def get_textures(self, folder, size=BLOCK_SIZE):
         local_folder = os.path.join(self.img_folder, folder)
         img_list = []
         for i in os.walk(os.path.join(local_folder)):
             for j in i[-1]:
                 if 'resize' not in j:
-                    ResizeImg(os.path.join(local_folder, j), w=BLOCK_SIZE).get_filename()
+                    ResizeImg(os.path.join(local_folder, j), w=size).get_filename()
                     resize_img = os.path.join(local_folder, j + '_resize.png')
                     img_list.append(pygame.image.load(resize_img).convert())
         return img_list
@@ -289,13 +312,14 @@ class Game:
         pygame.display.set_caption("My Game")
         self.clock = pygame.time.Clock()
         self.ded_grp = pygame.sprite.Group()
-        self.world = World(WORLD_MAP)
+        self.world = World(WORLD_MAP, *LOAD_DATA[1])
         self.ded_init()
-        with open('save.json', 'rb') as file:
-            self.load_data = print(dill.load(file))
 
     def ded_init(self):
-        self.ded = Ded([100, 100], self.world)
+        if LOAD_DATA is not None:
+            self.ded = Ded(LOAD_DATA[0], self.world)
+        else:
+            self.ded = Ded([100, 100], self.world)
         self.ded_grp.add(self.ded)
 
     # Обработка событий
@@ -306,20 +330,20 @@ class Game:
         backward_flag = False
         running = True
         while running:
-            self.map_now = pygame.sprite.Group()
+            map_now = pygame.sprite.Group()
             for i in self.world.get_lst():
-                self.map_now.add(i)
-            self.map_now.update()
+                for j in i:
+                    map_now.add(j)
+            map_now.update()
             self.ded_grp.update()
             self.screen.fill(WHITE)
-            self.map_now.draw(self.screen)
+            map_now.draw(self.screen)
             self.ded_grp.draw(self.screen)
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
-                    with open('save.json', 'wb') as file:
-                        self.ded.save_preload()
-
-                        dill.dump(self.ded.coord, file, protocol=dill.HIGHEST_PROTOCOL)
+                    with open(FILE_SAVE, 'wb') as file:
+                        dill.dump([self.ded.coord, [self.world.x, self.world.y]],
+                                  file, protocol=dill.HIGHEST_PROTOCOL)
                     running = False
                 if event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_LEFT:

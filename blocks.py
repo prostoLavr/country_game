@@ -83,7 +83,7 @@ map_lst = [
              'grass', 'grass', 'grass'],
             ['grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass',
              'grass', 'grass', 'grass'],
-            ['grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass',
+            ['grass', 'grass', 'grass', 'house', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass',
              'grass', 'grass', 'grass'],
             ['grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass',
              'grass', 'grass', 'grass'],
