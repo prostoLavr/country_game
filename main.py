@@ -3,6 +3,7 @@ import os
 import random
 from PIL import Image
 import blocks
+import dill
 
 WIDTH = 750
 HEIGHT = 500
@@ -19,11 +20,11 @@ BACKWARD = 1
 RIGHT = 2
 LEFT = 3
 
-BACKGROUND_COLOR = (197, 30, 30)
+BACKGROUND_COLOR = (237, 48, 48)
 
 DED_WIDTH = 50
-DED_SPEED = 3
-DED_STEP_SPEED = 7  # The less number the faster steps.
+DED_SPEED = 5
+DED_STEP_SPEED = 5  # The less number the faster steps.
 
 GROW_SPEED = 10
 BLOCK_SIZE = 50
@@ -232,6 +233,11 @@ class Ded(pygame.sprite.Sprite):
 
         self.step = False
 
+    def save_preload(self):
+        self.texture = None
+        self.image = None
+        return self
+
 
 class TextureLoader:
     def __init__(self):
@@ -257,7 +263,7 @@ class TextureLoader:
         for side_folder in ['forward', 'backward', 'right', 'left']:
             local_folder = os.path.join(self.img_folder, folder, side_folder)
             for i in os.walk(os.path.join(local_folder)):
-                for j in i[-1]:
+                for j in sorted(i[-1]):
                     if 'resize' not in j:
                         ResizeImg(os.path.join(local_folder, j), w=BLOCK_SIZE).get_filename()
                         resize_img = os.path.join(local_folder, j + '_resize.png')
@@ -285,6 +291,8 @@ class Game:
         self.ded_grp = pygame.sprite.Group()
         self.world = World(WORLD_MAP)
         self.ded_init()
+        with open('save.json', 'rb') as file:
+            self.load_data = print(dill.load(file))
 
     def ded_init(self):
         self.ded = Ded([100, 100], self.world)
@@ -308,6 +316,10 @@ class Game:
             self.ded_grp.draw(self.screen)
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
+                    with open('save.json', 'wb') as file:
+                        self.ded.save_preload()
+
+                        dill.dump(self.ded.coord, file, protocol=dill.HIGHEST_PROTOCOL)
                     running = False
                 if event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_LEFT:

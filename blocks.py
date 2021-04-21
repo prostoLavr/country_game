@@ -1,8 +1,6 @@
 map_lst = [
     [
         [
-            ['ground', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass',
-             'grass', 'grass', 'grass'],
             ['grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass',
              'grass', 'grass', 'grass'],
             ['grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass',
@@ -11,9 +9,11 @@ map_lst = [
              'grass', 'grass', 'grass'],
             ['grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass',
              'grass', 'grass', 'grass'],
-            ['grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass',
+            ['grass', 'grass', 'grass', 'grass', 'ground', 'ground', 'ground', 'grass', 'grass', 'grass', 'grass', 'grass',
              'grass', 'grass', 'grass'],
-            ['grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass',
+            ['grass', 'grass', 'grass', 'grass', 'ground', 'ground', 'ground', 'grass', 'grass', 'grass', 'grass', 'grass',
+             'grass', 'grass', 'grass'],
+            ['grass', 'grass', 'grass', 'grass', 'ground', 'ground', 'ground', 'grass', 'grass', 'grass', 'grass', 'grass',
              'grass', 'grass', 'grass'],
             ['grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass',
              'grass', 'grass', 'grass'],
