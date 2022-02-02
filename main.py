@@ -32,7 +32,7 @@ DED_WIDTH = 50
 DED_SPEED = 5
 DED_STEP_SPEED = 5  # The less number the faster steps.
 
-OPEN_SAVE = True
+OPEN_SAVE = False 
 FILE_SAVE = 'save'
 
 WORLD_MAP = blocks.map_lst
@@ -40,6 +40,8 @@ WORLD_MAP = blocks.map_lst
 if OPEN_SAVE:
     with open(FILE_SAVE, 'rb') as file:
         LOAD_DATA = dill.load(file)
+else:
+    LOAD_DATA = 0, 0
 
 
 class ResizeImg:
@@ -55,6 +57,7 @@ class ResizeImg:
             width = int((float(img.size[0]) * float(ratio)))
             img = img.resize((h, width), Image.AFFINE)
         img.save(filename + '_resize.png')
+        print('save im as', filename + '_resize.png')
 
     def get_filename(self):
         return self.filename + '_resize.png'
@@ -264,18 +267,21 @@ class Ded(pygame.sprite.Sprite):
 
 class TextureLoader:
     def __init__(self):
-        game_folder = os.path.dirname(__file__)
+        game_folder = './'
         self.img_folder = os.path.join(game_folder, 'res', 'images')
 
     def get_textures(self, folder, size=BLOCK_SIZE):
         local_folder = os.path.join(self.img_folder, folder)
         img_list = []
+        print(*os.walk(os.path.join(local_folder)))
+
         for i in os.walk(os.path.join(local_folder)):
             for j in i[-1]:
                 if 'resize' not in j:
                     ResizeImg(os.path.join(local_folder, j), w=size).get_filename()
                     resize_img = os.path.join(local_folder, j + '_resize.png')
                     img_list.append(pygame.image.load(resize_img).convert())
+        assert len(img_list) != 0
         return img_list
 
     def get_person_textures(self, folder):
@@ -287,17 +293,18 @@ class TextureLoader:
             local_folder = os.path.join(self.img_folder, folder, side_folder)
             for i in os.walk(os.path.join(local_folder)):
                 for j in sorted(i[-1]):
-                    if 'resize' not in j:
-                        ResizeImg(os.path.join(local_folder, j), w=BLOCK_SIZE).get_filename()
-                        resize_img = os.path.join(local_folder, j + '_resize.png')
-                        if 'forward' == side_folder:
-                            forward_list.append(pygame.image.load(resize_img).convert())
-                        if 'backward' == side_folder:
-                            backward_list.append(pygame.image.load(resize_img).convert())
-                        if 'right' == side_folder:
-                            right_list.append(pygame.image.load(resize_img).convert())
-                        if 'left' == side_folder:
-                            left_list.append(pygame.image.load(resize_img).convert())
+                    if 'resize' in j:
+                        continue
+                    ResizeImg(os.path.join(local_folder, j), w=BLOCK_SIZE).get_filename()
+                    resize_img = os.path.join(local_folder, j + '_resize.png')
+                    if 'forward' == side_folder:
+                        forward_list.append(pygame.image.load(resize_img).convert())
+                    if 'backward' == side_folder:
+                        backward_list.append(pygame.image.load(resize_img).convert())
+                    if 'right' == side_folder:
+                        right_list.append(pygame.image.load(resize_img).convert())
+                    if 'left' == side_folder:
+                        left_list.append(pygame.image.load(resize_img).convert())
         return [forward_list, backward_list, right_list, left_list]
 
 
@@ -312,7 +319,7 @@ class Game:
         pygame.display.set_caption("My Game")
         self.clock = pygame.time.Clock()
         self.ded_grp = pygame.sprite.Group()
-        self.world = World(WORLD_MAP, *LOAD_DATA[1])
+        self.world = World(WORLD_MAP, *LOAD_DATA)
         self.ded_init()
 
     def ded_init(self):
