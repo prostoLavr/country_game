@@ -26,11 +26,11 @@ BACKWARD = 1
 RIGHT = 2
 LEFT = 3
 
-BACKGROUND_COLOR = (237, 48, 48)
+BACKGROUND_COLOR = (255, 0, 0)
 
 DED_WIDTH = 50
 DED_SPEED = 5
-DED_STEP_SPEED = 5  # The less number the faster steps.
+DED_STEP_SPEED = 4  # The less number the faster steps.
 
 OPEN_SAVE = False 
 FILE_SAVE = 'save'
@@ -41,26 +41,38 @@ if OPEN_SAVE:
     with open(FILE_SAVE, 'rb') as file:
         LOAD_DATA = dill.load(file)
 else:
-    LOAD_DATA = 0, 0
+    LOAD_DATA = [100, 100], (0, 0)
 
 
 class ResizeImg:
-    def __init__(self, filename, w=None, h=None):
+    def __init__(self, filename, ):
         self.filename = filename
-        img = Image.open(filename)
-        if w is not None and h is None:
-            ratio = (w / float(img.size[0]))
-            height = int((float(img.size[1]) * float(ratio)))
-            img = img.resize((w, height), Image.AFFINE)
-        elif w is None and h is not None:
-            ratio = (h / float(img.size[1]))
-            width = int((float(img.size[0]) * float(ratio)))
-            img = img.resize((h, width), Image.AFFINE)
-        img.save(filename + '_resize.png')
-        print('save im as', filename + '_resize.png')
+        self.img = Image.open(filename)
 
-    def get_filename(self):
-        return self.filename + '_resize.png'
+    def by_width(self, value):
+        self.resize(w=value)
+        return self
+
+    def by_height(self, value):
+        self.resize(h=value)
+        return self
+
+    def resize(self, w=None, h=None):
+        if w is not None and h is None:
+            self.__resize(w, False)
+        elif w is None and h is not None:
+            self.__resize(h, True)
+        return self
+
+    def __resize(self, n: int, is_height: bool):
+        ratio = n / self.img.size[is_height]
+        width = int(self.img.size[not is_height] * ratio)
+        self.img = self.img.resize((n, width), Image.AFFINE)
+        return self
+
+    def save(self, postfix='_resize.png'):
+        self.img.save(self.filename + postfix)
+        return self.filename + postfix
 
 
 class World:
@@ -84,7 +96,9 @@ class World:
                         if obj_str == 'ground':
                             tmp_lst.append(Ground([j * BLOCK_SIZE, i * BLOCK_SIZE]))
                         if obj_str == 'house':
-                            up_obj_map_list.append(House([j * BLOCK_SIZE, i * BLOCK_SIZE]))
+                            # TODO: Временно заполняется землёй
+                            up_obj_map_list.append(Grass([j * BLOCK_SIZE, i * BLOCK_SIZE]))
+                            # up_obj_map_list.append(House([j * BLOCK_SIZE, i * BLOCK_SIZE]))
                     tmp_lst1.append(tmp_lst)
                 tmp_lst2.append(tmp_lst1)
             obj_map_list.append(tmp_lst2)
@@ -128,9 +142,9 @@ class World:
 
 
 class Plant(pygame.sprite.Sprite):
-    def __init__(self, coord):
+    def __init__(self, coord, max_seed=3):
         pygame.sprite.Sprite.__init__(self)
-        self.seed = random.randint(0, 3)
+        self.seed = random.randint(0, max_seed)
         self.coord = coord
         self.n_grow = 0
 
@@ -148,8 +162,8 @@ class Plant(pygame.sprite.Sprite):
 
 
 class Grass(Plant):
-    def __init__(self, *args):
-        Plant.__init__(self, *args)
+    def __init__(self, *args, **kwargs):
+        Plant.__init__(self, *args, **kwargs)
         self.image = TextureLoader().get_textures('grass')[self.seed // 2]
         self.set_rect_and_coord()
 
@@ -266,6 +280,8 @@ class Ded(pygame.sprite.Sprite):
 
 
 class TextureLoader:
+    postfix = '_resize.png'
+
     def __init__(self):
         game_folder = './'
         self.img_folder = os.path.join(game_folder, 'res', 'images')
@@ -273,39 +289,31 @@ class TextureLoader:
     def get_textures(self, folder, size=BLOCK_SIZE):
         local_folder = os.path.join(self.img_folder, folder)
         img_list = []
-        print(*os.walk(os.path.join(local_folder)))
 
         for i in os.walk(os.path.join(local_folder)):
             for j in i[-1]:
-                if 'resize' not in j:
-                    ResizeImg(os.path.join(local_folder, j), w=size).get_filename()
-                    resize_img = os.path.join(local_folder, j + '_resize.png')
-                    img_list.append(pygame.image.load(resize_img).convert())
-        assert len(img_list) != 0
+                if j.endswith(self.postfix):
+                    continue
+                resize_img = ResizeImg(os.path.join(local_folder, j)).by_width(size).save(self.postfix)
+                img_list.append(pygame.image.load(resize_img).convert())
+        assert len(img_list) != 0, f'Не найдено текстур в папке {folder}'
         return img_list
 
     def get_person_textures(self, folder):
-        left_list = []
-        right_list = []
-        forward_list = []
-        backward_list = []
-        for side_folder in ['forward', 'backward', 'right', 'left']:
+        left = []
+        right = []
+        bottom = []
+        up = []
+        for side_folder, lst in (('bottom', bottom), ('up', up), ('right', right), ('left', left)):
             local_folder = os.path.join(self.img_folder, folder, side_folder)
             for i in os.walk(os.path.join(local_folder)):
                 for j in sorted(i[-1]):
                     if 'resize' in j:
                         continue
-                    ResizeImg(os.path.join(local_folder, j), w=BLOCK_SIZE).get_filename()
-                    resize_img = os.path.join(local_folder, j + '_resize.png')
-                    if 'forward' == side_folder:
-                        forward_list.append(pygame.image.load(resize_img).convert())
-                    if 'backward' == side_folder:
-                        backward_list.append(pygame.image.load(resize_img).convert())
-                    if 'right' == side_folder:
-                        right_list.append(pygame.image.load(resize_img).convert())
-                    if 'left' == side_folder:
-                        left_list.append(pygame.image.load(resize_img).convert())
-        return [forward_list, backward_list, right_list, left_list]
+                    path = os.path.join(local_folder, j)
+                    resize_img = ResizeImg(path).by_width(BLOCK_SIZE).save(self.postfix)
+                    lst.append(pygame.image.load(resize_img).convert())
+        return [bottom, up, right, left]
 
 
 class Game:
@@ -319,14 +327,11 @@ class Game:
         pygame.display.set_caption("My Game")
         self.clock = pygame.time.Clock()
         self.ded_grp = pygame.sprite.Group()
-        self.world = World(WORLD_MAP, *LOAD_DATA)
+        self.world = World(WORLD_MAP, *LOAD_DATA[1])
         self.ded_init()
 
     def ded_init(self):
-        if LOAD_DATA is not None:
-            self.ded = Ded(LOAD_DATA[0], self.world)
-        else:
-            self.ded = Ded([100, 100], self.world)
+        self.ded = Ded(LOAD_DATA[0], self.world)
         self.ded_grp.add(self.ded)
 
     # Обработка событий

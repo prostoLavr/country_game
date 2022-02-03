@@ -1,2 +1,5 @@
 # Project exclude paths
 /venv/
+.zip
+/res/NoWorkTextures/
+/.idea/
