@@ -5,7 +5,7 @@ import dill
 import pygame
 from PIL import Image
 
-import blocks
+from blocks import *
 
 
 GROW_SPEED = 10
@@ -28,20 +28,64 @@ LEFT = 3
 
 BACKGROUND_COLOR = (255, 0, 0)
 
-DED_WIDTH = 50
-DED_SPEED = 5
-DED_STEP_SPEED = 4  # The less number the faster steps.
-
 OPEN_SAVE = False 
 FILE_SAVE = 'save'
 
-WORLD_MAP = blocks.map_lst
+WORLD_MAP = map_lst
 
 if OPEN_SAVE:
     with open(FILE_SAVE, 'rb') as file:
         LOAD_DATA = dill.load(file)
 else:
     LOAD_DATA = [100, 100], (0, 0)
+
+
+class Plant(pygame.sprite.Sprite):
+    def __init__(self, coord, max_seed=3):
+        pygame.sprite.Sprite.__init__(self)
+        self.seed = random.randint(0, max_seed)
+        self.coord = coord
+        self.n_grow = 0
+
+    def grow(self):
+        self.n_grow += GROW_SPEED
+
+    def update(self):
+        pass
+
+    def set_rect_and_coord(self):
+        self.rect = self.image.get_rect()
+        self.rect.center = (WIDTH / 2, HEIGHT / 2)
+        self.rect.x = self.coord[0]
+        self.rect.y = self.coord[1]
+
+
+class Grass(Plant):
+    def __init__(self, *args, **kwargs):
+        Plant.__init__(self, *args, **kwargs)
+        self.image = TextureLoader().get_textures('grass')[self.seed // 2]
+        self.set_rect_and_coord()
+
+
+class Ground(Plant):
+    def __init__(self, *args):
+        Plant.__init__(self, *args)
+        self.image = TextureLoader().get_textures('ground')[0]
+        self.set_rect_and_coord()
+
+
+class House(pygame.sprite.Sprite):
+    def __init__(self, coord):
+        pygame.sprite.Sprite.__init__(self)
+        self.coord = coord
+        self.image = TextureLoader().get_textures('house', 150)[0]
+        self.set_rect_and_coord()
+
+    def set_rect_and_coord(self):
+        self.rect = self.image.get_rect()
+        self.rect.center = (WIDTH / 2, HEIGHT / 2)
+        self.rect.x = self.coord[0]
+        self.rect.y = self.coord[1]
 
 
 class ResizeImg:
@@ -79,15 +123,21 @@ class World:
     def __init__(self, map_dict, x=0, y=0):
         self.x = x
         self.y = y
+        self.npcs = []
         self.generate(map_dict)
+
+    def get_npc_draw(self):
+        return self.npcs[self.y][self.x]
 
     def generate(self, map_dict):
         obj_map_list = []
         up_obj_map_list = []
         for y_world, value1 in enumerate(map_dict):
             tmp_lst2 = []
+            self.npcs.append([])
             for x_world, value2 in enumerate(value1):
                 tmp_lst1 = []
+                self.npcs[-1].append([])
                 for i, v in enumerate(value2):
                     tmp_lst = []
                     for j, obj_str in enumerate(v):
@@ -141,55 +191,82 @@ class World:
         return False
 
 
-class Plant(pygame.sprite.Sprite):
-    def __init__(self, coord, max_seed=3):
-        pygame.sprite.Sprite.__init__(self)
-        self.seed = random.randint(0, max_seed)
-        self.coord = coord
-        self.n_grow = 0
+class NPC(pygame.sprite.Sprite):
+    SPEED = 5
+    WIDTH = 50
 
-    def grow(self):
-        self.n_grow += GROW_SPEED
+    def __init__(self, coord: tuple, world_obj: World, world_coord: tuple):
+        """
+
+        :param coord:
+        :param world_obj:
+        :param world_coord: координаты мира(World.x, World.y)
+        """
+        pygame.sprite.Sprite.__init__(self)
+        self.texture = TextureLoader().get_person_textures('npc')
+        self.image = self.texture[0][0]
+        self.image.set_colorkey(BACKGROUND_COLOR)
+        self.rect = self.image.get_rect()
+        self.rect.center = coord
+        self.step = False
+        self.side = 0
+
+        self.point_move = None  # Точка, к которой движется
+
+        world_obj.npcs[world_coord[1]][world_coord[0]].append(self)
+
+    def move(self, direction):
+        if direction == RIGHT:
+            self.rect.x += NPC.SPEED
+            self.step = True
+            self.side = RIGHT
+        elif direction == LEFT:
+            self.rect.x -= NPC.SPEED
+            self.step = True
+            self.side = LEFT
+        elif direction == FORWARD:
+            self.rect.y -= NPC.SPEED
+            self.step = True
+            self.side = BACKWARD
+        elif direction == BACKWARD:
+            self.rect.y += NPC.SPEED
+            self.step = True
+            self.side = FORWARD
 
     def update(self):
-        pass
+        if self.step:
+            self.now = (self.now + 1) % ((len(self.texture[self.side][1:])) * Ded.DED_STEP_SPEED)
+            self.image = self.texture[self.side][1:][self.now // Ded.DED_STEP_SPEED]
+        else:
+            self.now = 0
+            self.image = self.texture[self.side][0]
+        self.step = False
 
-    def set_rect_and_coord(self):
-        self.rect = self.image.get_rect()
-        self.rect.center = (WIDTH / 2, HEIGHT / 2)
-        self.rect.x = self.coord[0]
-        self.rect.y = self.coord[1]
-
-
-class Grass(Plant):
-    def __init__(self, *args, **kwargs):
-        Plant.__init__(self, *args, **kwargs)
-        self.image = TextureLoader().get_textures('grass')[self.seed // 2]
-        self.set_rect_and_coord()
-
-
-class Ground(Plant):
-    def __init__(self, *args):
-        Plant.__init__(self, *args)
-        self.image = TextureLoader().get_textures('ground')[0]
-        self.set_rect_and_coord()
-
-
-class House(pygame.sprite.Sprite):
-    def __init__(self, coord):
-        pygame.sprite.Sprite.__init__(self)
-        self.coord = coord
-        self.image = TextureLoader().get_textures('house', 150)[0]
-        self.set_rect_and_coord()
-
-    def set_rect_and_coord(self):
-        self.rect = self.image.get_rect()
-        self.rect.center = (WIDTH / 2, HEIGHT / 2)
-        self.rect.x = self.coord[0]
-        self.rect.y = self.coord[1]
+        if self.point_move:
+            if self.rect.x not in range(self.point_move[0] - NPC.SPEED, self.point_move[0] + NPC.SPEED) \
+                    and self.point_move[0] > self.rect.x:
+                self.move(RIGHT)
+            elif self.rect.x not in range(self.point_move[0] - NPC.SPEED, self.point_move[0] + NPC.SPEED) \
+                    and self.point_move[0] < self.rect.x:
+                self.move(LEFT)
+            elif self.rect.y not in range(self.point_move[1] - NPC.SPEED, self.point_move[1] + NPC.SPEED) \
+                    and self.point_move[1] < self.rect.y:
+                self.move(FORWARD)
+            elif self.rect.y not in range(self.point_move[1] - NPC.SPEED, self.point_move[1] + NPC.SPEED) \
+                    and self.point_move[1] > self.rect.y:
+                self.move(BACKWARD)
+            else:
+                self.point_move = None
+        else:
+            self.point_move = (random.randrange(0, WIDTH - self.image.get_size()[0], NPC.SPEED),
+                               random.randrange(0, HEIGHT - self.image.get_size()[1], NPC.SPEED))
 
 
 class Ded(pygame.sprite.Sprite):
+    DED_WIDTH = 50
+    DED_SPEED = 5
+    DED_STEP_SPEED = 4  # The less number the faster steps.
+
     def __init__(self, coord, world_obj: World):
         pygame.sprite.Sprite.__init__(self)
         self.now = 0
@@ -228,8 +305,8 @@ class Ded(pygame.sprite.Sprite):
         self.rect.x = self.coord[0]
         self.rect.y = self.coord[1]
         if self.step:
-            self.now = (self.now + 1) % ((len(self.texture[self.side][1:])) * DED_STEP_SPEED)
-            self.image = self.texture[self.side][1:][self.now // DED_STEP_SPEED]
+            self.now = (self.now + 1) % ((len(self.texture[self.side][1:])) * Ded.DED_STEP_SPEED)
+            self.image = self.texture[self.side][1:][self.now // Ded.DED_STEP_SPEED]
         else:
             self.now = 0
             self.image = self.texture[self.side][0]
@@ -333,6 +410,7 @@ class Game:
     def ded_init(self):
         self.ded = Ded(LOAD_DATA[0], self.world)
         self.ded_grp.add(self.ded)
+        NPC((0, 0), self.world, (0, 0))
 
     # Обработка событий
     def game_loop(self):
@@ -351,6 +429,9 @@ class Game:
             self.screen.fill(WHITE)
             map_now.draw(self.screen)
             self.ded_grp.draw(self.screen)
+            for n in self.world.get_npc_draw():
+                n.update()
+                self.screen.blit(n.image, n.rect)
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     with open(FILE_SAVE, 'wb') as file:
@@ -376,13 +457,13 @@ class Game:
                     if event.key == pygame.K_RIGHT:
                         right_flag = False
             if left_flag:
-                self.ded.go_left(DED_SPEED)
+                self.ded.go_left(Ded.DED_SPEED)
             if right_flag:
-                self.ded.go_right(DED_SPEED)
+                self.ded.go_right(Ded.DED_SPEED)
             if forward_flag:
-                self.ded.go_backward(DED_SPEED)
+                self.ded.go_backward(Ded.DED_SPEED)
             if backward_flag:
-                self.ded.go_forward(DED_SPEED)
+                self.ded.go_forward(Ded.DED_SPEED)
 
             pygame.display.flip()
             self.clock.tick(FPS)
