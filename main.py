@@ -5,7 +5,7 @@ import dill
 import pygame
 from PIL import Image
 
-from blocks import *
+import blocks
 import xml.etree.ElementTree as ET
 
 
@@ -35,7 +35,7 @@ BACKGROUND_COLOR = (204, 51, 51)
 OPEN_SAVE = False 
 FILE_SAVE = 'save'
 
-WORLD_MAP = map_lst
+WORLD_MAP = blocks.map_lst
 
 if OPEN_SAVE:
     with open(FILE_SAVE, 'rb') as file:
@@ -331,8 +331,8 @@ class Ded(pygame.sprite.Sprite):
         self.rect.x = self.coord[0]
         self.rect.y = self.coord[1]
         if self.step:
-            self.now = (self.now + 1) % ((len(self.texture[self.side][1:])) * Ded.DED_STEP_SPEED)
-            self.image = self.texture[self.side][1:][self.now // Ded.DED_STEP_SPEED]
+            self.now = (self.now + 1) % ((len(self.texture[self.side][1:])) * self.DED_STEP_SPEED)
+            self.image = self.texture[self.side][1:][self.now // self.DED_STEP_SPEED]
         else:
             self.now = 0
             self.image = self.texture[self.side][0]
