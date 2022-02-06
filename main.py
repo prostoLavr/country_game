@@ -6,6 +6,7 @@ import pygame
 from PIL import Image
 
 from blocks import *
+import xml.etree.ElementTree as ET
 
 
 GROW_SPEED = 10
@@ -20,13 +21,16 @@ WHITE = (255, 255, 255)
 RED = (255, 0, 0)
 GREEN = (0, 255, 0)
 BLUE = (0, 0, 255)
+GRAY = (60, 60, 60)
+GRAY2 = (120, 120, 120)
+DARKGRAY = (180, 180, 180)
 
 FORWARD = 0
 BACKWARD = 1
 RIGHT = 2
 LEFT = 3
 
-BACKGROUND_COLOR = (255, 0, 0)
+BACKGROUND_COLOR = (204, 51, 51)
 
 OPEN_SAVE = False 
 FILE_SAVE = 'save'
@@ -209,11 +213,31 @@ class NPC(pygame.sprite.Sprite):
         self.rect = self.image.get_rect()
         self.rect.center = coord
         self.step = False
+        self.can_move = True
         self.side = 0
 
         self.point_move = None  # Точка, к которой движется
 
         world_obj.npcs[world_coord[1]][world_coord[0]].append(self)
+
+    def get_dialog(self, dialog_name, p_id=1) -> dict:
+        dialogs = ET.parse('dialogs.xml').getroot()
+        ret = {}
+        for a in dialogs:
+            if a.attrib['name'] == dialog_name:
+                for p in a:
+                    if p.attrib['id'] == str(p_id):
+                        ret['npc_object'] = self
+                        ret['dialog_name'] = dialog_name
+                        ret['text'] = list(p)[0].text
+                        if list(p)[1] == 'exit':
+                            ret['answers'] = None
+                        else:
+                            ret['answers'] = [{'text': ans.text, 'to': ans.attrib['to']} for ans in list(p)[1]]
+                        break
+            if ret:
+                break
+        return ret
 
     def move(self, direction):
         if direction == RIGHT:
@@ -234,32 +258,34 @@ class NPC(pygame.sprite.Sprite):
             self.side = FORWARD
 
     def update(self):
-        if self.step:
-            self.now = (self.now + 1) % ((len(self.texture[self.side][1:])) * Ded.DED_STEP_SPEED)
-            self.image = self.texture[self.side][1:][self.now // Ded.DED_STEP_SPEED]
-        else:
-            self.now = 0
-            self.image = self.texture[self.side][0]
-        self.step = False
-
-        if self.point_move:
-            if self.rect.x not in range(self.point_move[0] - NPC.SPEED, self.point_move[0] + NPC.SPEED) \
-                    and self.point_move[0] > self.rect.x:
-                self.move(RIGHT)
-            elif self.rect.x not in range(self.point_move[0] - NPC.SPEED, self.point_move[0] + NPC.SPEED) \
-                    and self.point_move[0] < self.rect.x:
-                self.move(LEFT)
-            elif self.rect.y not in range(self.point_move[1] - NPC.SPEED, self.point_move[1] + NPC.SPEED) \
-                    and self.point_move[1] < self.rect.y:
-                self.move(FORWARD)
-            elif self.rect.y not in range(self.point_move[1] - NPC.SPEED, self.point_move[1] + NPC.SPEED) \
-                    and self.point_move[1] > self.rect.y:
-                self.move(BACKWARD)
+        if self.can_move:
+            if self.step:
+                self.now = (self.now + 1) % ((len(self.texture[self.side][1:])) * Ded.DED_STEP_SPEED)
+                self.image = self.texture[self.side][1:][self.now // Ded.DED_STEP_SPEED]
             else:
-                self.point_move = None
-        else:
-            self.point_move = (random.randrange(0, WIDTH - self.image.get_size()[0], NPC.SPEED),
-                               random.randrange(0, HEIGHT - self.image.get_size()[1], NPC.SPEED))
+                self.now = 0
+                self.image = self.texture[self.side][0]
+            self.image.set_colorkey(BACKGROUND_COLOR)
+            self.step = False
+
+            if self.point_move:
+                if self.rect.x not in range(self.point_move[0] - NPC.SPEED, self.point_move[0] + NPC.SPEED) \
+                        and self.point_move[0] > self.rect.x:
+                    self.move(RIGHT)
+                elif self.rect.x not in range(self.point_move[0] - NPC.SPEED, self.point_move[0] + NPC.SPEED) \
+                        and self.point_move[0] < self.rect.x:
+                    self.move(LEFT)
+                elif self.rect.y not in range(self.point_move[1] - NPC.SPEED, self.point_move[1] + NPC.SPEED) \
+                        and self.point_move[1] < self.rect.y:
+                    self.move(FORWARD)
+                elif self.rect.y not in range(self.point_move[1] - NPC.SPEED, self.point_move[1] + NPC.SPEED) \
+                        and self.point_move[1] > self.rect.y:
+                    self.move(BACKWARD)
+                else:
+                    self.point_move = None
+            else:
+                self.point_move = (random.randrange(0, WIDTH - self.image.get_size()[0], NPC.SPEED),
+                                   random.randrange(0, HEIGHT - self.image.get_size()[1], NPC.SPEED))
 
 
 class Ded(pygame.sprite.Sprite):
@@ -395,22 +421,26 @@ class TextureLoader:
 
 class Game:
     def __init__(self):
+        self.dialog = None
         self.init_game()
         self.game_loop()
 
     def init_game(self):
         pygame.init()
+        pygame.font.init()
         self.screen = pygame.display.set_mode((WIDTH, HEIGHT))
         pygame.display.set_caption("My Game")
         self.clock = pygame.time.Clock()
         self.ded_grp = pygame.sprite.Group()
+        self.npc_group = pygame.sprite.Group()
         self.world = World(WORLD_MAP, *LOAD_DATA[1])
+        self.font = pygame.font.Font(pygame.font.match_font('arial'), 22)
         self.ded_init()
 
     def ded_init(self):
         self.ded = Ded(LOAD_DATA[0], self.world)
         self.ded_grp.add(self.ded)
-        NPC((0, 0), self.world, (0, 0))
+        self.npc_group.add(NPC((0, 0), self.world, (0, 0)))
 
     # Обработка событий
     def game_loop(self):
@@ -438,6 +468,20 @@ class Game:
                         dill.dump([self.ded.coord, [self.world.x, self.world.y]],
                                   file, protocol=dill.HIGHEST_PROTOCOL)
                     running = False
+                if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                    if self.dialog:
+                        if not self.dialog['answers']:
+                            t = self.font.render(f"*окончить диалог*", True, GRAY, DARKGRAY)
+                            if t.get_rect(topleft=(10, HEIGHT - 75)).collidepoint(pygame.mouse.get_pos()):
+                                self.dialog['npc_object'].can_move = True
+                                self.dialog = None
+                        else:
+                            for i, a in enumerate(self.dialog['answers']):
+                                t = self.font.render(f"{i + 1}) {a['text']}", True, GRAY, DARKGRAY)
+                                if t.get_rect(topleft=(10, HEIGHT - (75 - 25 * i)))\
+                                        .collidepoint(pygame.mouse.get_pos()):
+                                    self.dialog = self.dialog['npc_object'].get_dialog(self.dialog['dialog_name'],
+                                                                                       a['to'])
                 if event.type == pygame.KEYDOWN:
                     if event.key == pygame.K_LEFT:
                         left_flag = True
@@ -447,6 +491,19 @@ class Game:
                         backward_flag = True
                     if event.key == pygame.K_RIGHT:
                         right_flag = True
+                    if event.key == pygame.K_d:  # Начать диалог
+                        if self.dialog is None:
+                            dialog_npc = None
+                            for n in self.world.get_npc_draw():
+                                if n.rect.centerx in range(self.ded.rect.centerx - BLOCK_SIZE,
+                                                           self.ded.rect.centerx + BLOCK_SIZE) \
+                                        and n.rect.centery in range(self.ded.rect.centery - BLOCK_SIZE,
+                                                                    self.ded.rect.centery + BLOCK_SIZE):
+                                    dialog_npc = n
+                                    break
+                            if dialog_npc:
+                                dialog_npc.can_move = False
+                                self.dialog = dialog_npc.get_dialog('test')  # TODO получение диалогов нпс
                 if event.type == pygame.KEYUP:
                     if event.key == pygame.K_LEFT:
                         left_flag = False
@@ -464,6 +521,21 @@ class Game:
                 self.ded.go_backward(Ded.DED_SPEED)
             if backward_flag:
                 self.ded.go_forward(Ded.DED_SPEED)
+
+            if self.dialog:  # Отображение диалога
+                self.screen.blit(self.font.render(self.dialog['text'], True, (60, 60, 60), (180, 180, 180, 180)),
+                                 (10, HEIGHT - 100))
+                if not self.dialog['answers']:
+                    t = self.font.render(f"*окончить диалог*", True, GRAY, DARKGRAY)
+                    if t.get_rect(topleft=(10, HEIGHT - 75)).collidepoint(pygame.mouse.get_pos()):
+                        t = self.font.render(f"*окончить диалог*", True, BLACK, DARKGRAY)
+                    self.screen.blit(t, (10, HEIGHT - 75))
+                else:
+                    for i, a in enumerate(self.dialog['answers']):
+                        t = self.font.render(f"{i + 1}) {a['text']}", True, GRAY, DARKGRAY)
+                        if t.get_rect(topleft=(10, HEIGHT - (75 - 25 * i))).collidepoint(pygame.mouse.get_pos()):
+                            t = self.font.render(f"{i + 1}) {a['text']}", True, BLACK, DARKGRAY)
+                        self.screen.blit(t, (10, HEIGHT - (75 - 25 * i)))
 
             pygame.display.flip()
             self.clock.tick(FPS)

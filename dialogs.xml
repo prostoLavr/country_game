@@ -1,0 +1,19 @@
+<dialogs>
+    <dialog name="test">
+        <p id="1">
+            <text>Привет!</text>
+            <answers>
+                <a to="2">Привет</a>
+                <a to="3">Пока</a>
+            </answers>
+        </p>
+        <p id="2">
+            <text>Ладно</text>
+            <answers></answers>
+        </p>
+        <p id="3">
+            <text>Ну пока</text>
+            <answers></answers>
+        </p>
+    </dialog>
+</dialogs>

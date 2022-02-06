@@ -2,4 +2,5 @@
 /venv/
 .zip
 /res/NoWorkTextures/
-/.idea/
+.idea/
+.gitignore
