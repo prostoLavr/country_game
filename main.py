@@ -7,7 +7,8 @@ from PIL import Image
 
 import blocks
 import xml.etree.ElementTree as ET
-
+from image_util import TextureLoader
+from inventory import Inventory, Item
 
 GROW_SPEED = 10
 BLOCK_SIZE = 50
@@ -92,56 +93,25 @@ class House(pygame.sprite.Sprite):
         self.rect.y = self.coord[1]
 
 
-class ResizeImg:
-    def __init__(self, filename, ):
-        self.filename = filename
-        self.img = Image.open(filename)
-
-    def by_width(self, value):
-        self.resize(w=value)
-        return self
-
-    def by_height(self, value):
-        self.resize(h=value)
-        return self
-
-    def resize(self, w=None, h=None):
-        if w is not None and h is None:
-            self.__resize(w, False)
-        elif w is None and h is not None:
-            self.__resize(h, True)
-        return self
-
-    def __resize(self, n: int, is_height: bool):
-        ratio = n / self.img.size[is_height]
-        width = int(self.img.size[not is_height] * ratio)
-        self.img = self.img.resize((n, width), Image.AFFINE)
-        return self
-
-    def save(self, postfix='_resize.png'):
-        self.img.save(self.filename + postfix)
-        return self.filename + postfix
-
-
 class World:
     def __init__(self, map_dict, x=0, y=0):
         self.x = x
         self.y = y
-        self.npcs = []
+        self.objects = []
         self.generate(map_dict)
 
-    def get_npc_draw(self):
-        return self.npcs[self.y][self.x]
+    def get_objects_draw(self) -> list:
+        return self.objects[self.y][self.x]
 
     def generate(self, map_dict):
         obj_map_list = []
         up_obj_map_list = []
         for y_world, value1 in enumerate(map_dict):
             tmp_lst2 = []
-            self.npcs.append([])
+            self.objects.append([])
             for x_world, value2 in enumerate(value1):
                 tmp_lst1 = []
-                self.npcs[-1].append([])
+                self.objects[-1].append([])
                 for i, v in enumerate(value2):
                     tmp_lst = []
                     for j, obj_str in enumerate(v):
@@ -218,9 +188,13 @@ class NPC(pygame.sprite.Sprite):
 
         self.point_move = None  # Точка, к которой движется
 
-        world_obj.npcs[world_coord[1]][world_coord[0]].append(self)
+        world_obj.objects[world_coord[1]][world_coord[0]].append(self)
 
     def get_dialog(self, dialog_name, p_id=1) -> dict:
+        """Получение словаря с текстом диалога
+
+        :param p_id: пункт диалога
+        """
         dialogs = ET.parse('dialogs.xml').getroot()
         ret = {}
         for a in dialogs:
@@ -230,7 +204,7 @@ class NPC(pygame.sprite.Sprite):
                         ret['npc_object'] = self
                         ret['dialog_name'] = dialog_name
                         ret['text'] = list(p)[0].text
-                        if list(p)[1] == 'exit':
+                        if list(p)[1].text == 'exit':
                             ret['answers'] = None
                         else:
                             ret['answers'] = [{'text': ans.text, 'to': ans.attrib['to']} for ans in list(p)[1]]
@@ -306,6 +280,7 @@ class Ded(pygame.sprite.Sprite):
         self.coord = coord
         self.step = False
         self.side = 0
+        self.inventory = Inventory()
 
     def go_forward(self, delta):
         self.coord[1] += delta
@@ -327,7 +302,7 @@ class Ded(pygame.sprite.Sprite):
         self.step = True
         self.side = RIGHT
 
-    def update(self):
+    def update(self, game_obj: 'Game'):
         self.rect.x = self.coord[0]
         self.rect.y = self.coord[1]
         if self.step:
@@ -376,47 +351,17 @@ class Ded(pygame.sprite.Sprite):
 
         self.step = False
 
+        if pygame.sprite.spritecollide(self, game_obj.world.get_objects_draw(), False):
+            for i in pygame.sprite.spritecollide(self, game_obj.world.get_objects_draw(), False):
+                if isinstance(i, Item):
+                    self.inventory.addItem(i)
+                    self.world.objects[self.world.y][self.world.x].remove(i)
+                    game_obj.items_group.remove(i)
+
     def save_preload(self):
         self.texture = None
         self.image = None
         return self
-
-
-class TextureLoader:
-    postfix = '_resize.png'
-
-    def __init__(self):
-        game_folder = './'
-        self.img_folder = os.path.join(game_folder, 'res', 'images')
-
-    def get_textures(self, folder, size=BLOCK_SIZE):
-        local_folder = os.path.join(self.img_folder, folder)
-        img_list = []
-
-        for i in os.walk(os.path.join(local_folder)):
-            for j in i[-1]:
-                if j.endswith(self.postfix):
-                    continue
-                resize_img = ResizeImg(os.path.join(local_folder, j)).by_width(size).save(self.postfix)
-                img_list.append(pygame.image.load(resize_img).convert())
-        assert len(img_list) != 0, f'Не найдено текстур в папке {folder}'
-        return img_list
-
-    def get_person_textures(self, folder):
-        left = []
-        right = []
-        bottom = []
-        up = []
-        for side_folder, lst in (('bottom', bottom), ('up', up), ('right', right), ('left', left)):
-            local_folder = os.path.join(self.img_folder, folder, side_folder)
-            for i in os.walk(os.path.join(local_folder)):
-                for j in sorted(i[-1]):
-                    if 'resize' in j:
-                        continue
-                    path = os.path.join(local_folder, j)
-                    resize_img = ResizeImg(path).by_width(BLOCK_SIZE).save(self.postfix)
-                    lst.append(pygame.image.load(resize_img).convert())
-        return [bottom, up, right, left]
 
 
 class Game:
@@ -433,6 +378,7 @@ class Game:
         self.clock = pygame.time.Clock()
         self.ded_grp = pygame.sprite.Group()
         self.npc_group = pygame.sprite.Group()
+        self.items_group = pygame.sprite.Group()
         self.world = World(WORLD_MAP, *LOAD_DATA[1])
         self.font = pygame.font.Font(pygame.font.match_font('arial'), 22)
         self.ded_init()
@@ -441,6 +387,7 @@ class Game:
         self.ded = Ded(LOAD_DATA[0], self.world)
         self.ded_grp.add(self.ded)
         self.npc_group.add(NPC((0, 0), self.world, (0, 0)))
+        Item('test', self.items_group, self.world, (0, 0), (200, 200))
 
     # Обработка событий
     def game_loop(self):
@@ -448,6 +395,7 @@ class Game:
         right_flag = False
         forward_flag = False
         backward_flag = False
+        show_inv = False
         running = True
         while running:
             map_now = pygame.sprite.Group()
@@ -455,11 +403,11 @@ class Game:
                 for j in i:
                     map_now.add(j)
             map_now.update()
-            self.ded_grp.update()
+            self.ded_grp.update(game_obj=self)
             self.screen.fill(WHITE)
             map_now.draw(self.screen)
             self.ded_grp.draw(self.screen)
-            for n in self.world.get_npc_draw():
+            for n in self.world.get_objects_draw():
                 n.update()
                 self.screen.blit(n.image, n.rect)
             for event in pygame.event.get():
@@ -494,7 +442,7 @@ class Game:
                     if event.key == pygame.K_d:  # Начать диалог
                         if self.dialog is None:
                             dialog_npc = None
-                            for n in self.world.get_npc_draw():
+                            for n in self.world.get_objects_draw():
                                 if n.rect.centerx in range(self.ded.rect.centerx - BLOCK_SIZE,
                                                            self.ded.rect.centerx + BLOCK_SIZE) \
                                         and n.rect.centery in range(self.ded.rect.centery - BLOCK_SIZE,
@@ -504,6 +452,8 @@ class Game:
                             if dialog_npc:
                                 dialog_npc.can_move = False
                                 self.dialog = dialog_npc.get_dialog('test')  # TODO получение диалогов нпс
+                    if event.key == pygame.K_i:
+                        show_inv = not show_inv
                 if event.type == pygame.KEYUP:
                     if event.key == pygame.K_LEFT:
                         left_flag = False
@@ -536,6 +486,9 @@ class Game:
                         if t.get_rect(topleft=(10, HEIGHT - (75 - 25 * i))).collidepoint(pygame.mouse.get_pos()):
                             t = self.font.render(f"{i + 1}) {a['text']}", True, BLACK, DARKGRAY)
                         self.screen.blit(t, (10, HEIGHT - (75 - 25 * i)))
+
+            if show_inv:
+                self.ded.inventory.draw(self.screen)
 
             pygame.display.flip()
             self.clock.tick(FPS)
