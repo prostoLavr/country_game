@@ -9,12 +9,16 @@ import blocks
 import xml.etree.ElementTree as ET
 from image_util import TextureLoader
 from inventory import Inventory, Item
+import image_util
+from math import sqrt
+
 
 GROW_SPEED = 10
-BLOCK_SIZE = 50
+BLOCK_SIZE = 120
+image_util.BLOCK_SIZE = BLOCK_SIZE
 
-WIDTH = 750
-HEIGHT = 500
+WIDTH = 1920
+HEIGHT = 1080
 FPS = 30
 
 BLACK = (0, 0, 0)
@@ -264,7 +268,8 @@ class NPC(pygame.sprite.Sprite):
 
 class Ded(pygame.sprite.Sprite):
     DED_WIDTH = 50
-    DED_SPEED = 5
+    DED_SPEED = 7
+    DED_CROSS_SPEED = DED_SPEED * sqrt(2)
     DED_STEP_SPEED = 4  # The less number the faster steps.
 
     def __init__(self, coord, world_obj: World):
@@ -282,25 +287,20 @@ class Ded(pygame.sprite.Sprite):
         self.side = 0
         self.inventory = Inventory()
 
-    def go_forward(self, delta):
-        self.coord[1] += delta
-        self.step = True
-        self.side = FORWARD
-
-    def go_backward(self, delta):
-        self.coord[1] -= delta
-        self.step = True
-        self.side = BACKWARD
-
-    def go_left(self, delta):
-        self.coord[0] -= delta
-        self.step = True
-        self.side = LEFT
-
-    def go_right(self, delta):
-        self.coord[0] += delta
-        self.step = True
-        self.side = RIGHT
+    def go_by_flags(self, forward, backward, left, right):
+        if left:
+            self.coord[0] -= self.DED_SPEED if forward or backward else self.DED_CROSS_SPEED
+            self.side = LEFT
+        if right:
+            self.coord[0] += self.DED_SPEED if forward or backward else self.DED_CROSS_SPEED
+            self.side = RIGHT
+        if forward:
+            self.coord[1] += self.DED_SPEED if left or right else self.DED_CROSS_SPEED
+            self.side = FORWARD
+        if backward:
+            self.coord[1] -= self.DED_SPEED if left or right else self.DED_CROSS_SPEED
+            self.side = BACKWARD
+        self.step = any((left, right, forward, backward))
 
     def update(self, game_obj: 'Game'):
         self.rect.x = self.coord[0]
@@ -316,8 +316,7 @@ class Ded(pygame.sprite.Sprite):
         if self.rect.right > WIDTH:
             if self.world.is_right():
                 if self.rect.left > WIDTH:
-                    self.coord[0] = 0
-                    self.rect.x = self.coord[0]
+                    self.rect.x = self.coord[0] = 0
                     self.world.right()
             else:
                 self.coord[0] = WIDTH - self.rect.width
@@ -325,8 +324,7 @@ class Ded(pygame.sprite.Sprite):
         if self.rect.left < 0:
             if self.world.is_left():
                 if self.rect.right < 0:
-                    self.coord[0] = WIDTH - self.rect.width
-                    self.rect.x = self.coord[0]
+                    self.rect.x = self.coord[0] = WIDTH - self.rect.width
                     self.world.left()
             else:
                 self.coord[0] = 0
@@ -334,8 +332,7 @@ class Ded(pygame.sprite.Sprite):
         if self.rect.bottom > HEIGHT:
             if self.world.is_up():
                 if self.rect.top > HEIGHT:
-                    self.coord[1] = 0
-                    self.rect.y = self.coord[1]
+                    self.rect.y = self.coord[1] = 0
                     self.world.up()
             else:
                 self.coord[1] = HEIGHT - self.rect.height
@@ -343,8 +340,7 @@ class Ded(pygame.sprite.Sprite):
         if self.rect.top < 0:
             if self.world.is_down():
                 if self.rect.bottom < 0:
-                    self.coord[1] = HEIGHT - self.rect.height
-                    self.rect.y = self.coord[1]
+                    self.rect.y = self.coord[1] = HEIGHT - self.rect.height
                     self.world.down()
             else:
                 self.coord[1] = 0
@@ -373,7 +369,7 @@ class Game:
     def init_game(self):
         pygame.init()
         pygame.font.init()
-        self.screen = pygame.display.set_mode((WIDTH, HEIGHT))
+        self.screen = pygame.display.set_mode((WIDTH, HEIGHT), pygame.FULLSCREEN)
         pygame.display.set_caption("My Game")
         self.clock = pygame.time.Clock()
         self.ded_grp = pygame.sprite.Group()
@@ -387,7 +383,7 @@ class Game:
         self.ded = Ded(LOAD_DATA[0], self.world)
         self.ded_grp.add(self.ded)
         self.npc_group.add(NPC((0, 0), self.world, (0, 0)))
-        Item('test', self.items_group, self.world, (0, 0), (200, 200))
+        # Item('test', self.items_group, self.world, (0, 0), (200, 200))
 
     # Обработка событий
     def game_loop(self):
@@ -434,9 +430,9 @@ class Game:
                     if event.key == pygame.K_LEFT:
                         left_flag = True
                     if event.key == pygame.K_UP:
-                        forward_flag = True
-                    if event.key == pygame.K_DOWN:
                         backward_flag = True
+                    if event.key == pygame.K_DOWN:
+                        forward_flag = True
                     if event.key == pygame.K_RIGHT:
                         right_flag = True
                     if event.key == pygame.K_d:  # Начать диалог
@@ -458,19 +454,12 @@ class Game:
                     if event.key == pygame.K_LEFT:
                         left_flag = False
                     if event.key == pygame.K_UP:
-                        forward_flag = False
-                    if event.key == pygame.K_DOWN:
                         backward_flag = False
+                    if event.key == pygame.K_DOWN:
+                        forward_flag = False
                     if event.key == pygame.K_RIGHT:
                         right_flag = False
-            if left_flag:
-                self.ded.go_left(Ded.DED_SPEED)
-            if right_flag:
-                self.ded.go_right(Ded.DED_SPEED)
-            if forward_flag:
-                self.ded.go_backward(Ded.DED_SPEED)
-            if backward_flag:
-                self.ded.go_forward(Ded.DED_SPEED)
+            self.ded.go_by_flags(forward_flag, backward_flag, left_flag, right_flag)
 
             if self.dialog:  # Отображение диалога
                 self.screen.blit(self.font.render(self.dialog['text'], True, (60, 60, 60), (180, 180, 180, 180)),
@@ -497,3 +486,4 @@ class Game:
 if __name__ == '__main__':
     game = Game()
     pygame.quit()
+
