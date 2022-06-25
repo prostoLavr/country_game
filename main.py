@@ -83,6 +83,32 @@ class Ground(Plant):
         self.set_rect_and_coord()
 
 
+class Stump(Plant):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.image = texture_loader.get_texture('stump')[0]
+        self.set_rect_and_coord()
+
+
+class TextureObject(pygame.sprite.Sprite):
+    def __init__(self, coord: list[int, int], texture_name: str):
+        super().__init__()
+        self.coord = coord
+        self.image = texture_loader.get_texture(texture_name)
+        self.set_rect_and_coord
+
+    def update(self):
+        pass
+
+    def set_rect_and_coord(self):
+        self.rect = self.image.get_rect()
+        self.rect.center = (WIDTH / 2, HEIGHT / 2)
+        self.rect.x = self.coord[0]
+        self.rect.y = self.coord[1]
+
+
+
+
 class House(pygame.sprite.Sprite):
     def __init__(self, coord):
         pygame.sprite.Sprite.__init__(self)
