@@ -4,7 +4,11 @@ import pygame
 from PIL import Image
 
 
-BLOCK_SIZE = 120
+BLOCK_SIZE =50 
+
+def set_block_size(value: int):
+    global BLOCK_SIZE
+    BLOCK_SIZE = value 
 
 
 class ResizeImg:
@@ -41,16 +45,20 @@ class ResizeImg:
 class TextureLoader:
     postfix = '_resize.png'
 
-    def __init__(self):
+    def __init__(self, block_size):
         game_folder = './'
         self.img_folder = os.path.join(game_folder, 'res', 'images')
+        self.block_size = block_size
 
     def get_item_textures(self, item_name: str, size=60):
         img = os.path.join(self.img_folder, item_name)
         resize_img = ResizeImg(img).by_width(size).save(self.postfix)
         return resize_img
 
-    def get_textures(self, folder, size=BLOCK_SIZE):
+    def get_textures(self, folder, size=None):
+        if size is None:
+            size = self.block_size
+        print('resize to', size)
         local_folder = os.path.join(self.img_folder, folder)
         img_list = []
 
@@ -63,8 +71,10 @@ class TextureLoader:
         assert len(img_list) != 0, f'Не найдено текстур в папке {folder}'
         return img_list
 
-    def get_texture(self, texture_name: str, size=BLOCK_SIZE):
-        return self.get_textures(texture_name, size)[0]
+    def get_texture(self, texture_name: str, size=None):
+         if size is None:
+            size = self.block_size
+         return self.get_textures(texture_name, size)[0]
 
     def get_person_textures(self, folder):
         left = []
@@ -78,6 +88,6 @@ class TextureLoader:
                     if 'resize' in j:
                         continue
                     path = os.path.join(local_folder, j)
-                    resize_img = ResizeImg(path).by_width(BLOCK_SIZE).save(self.postfix)
+                    resize_img = ResizeImg(path).by_width(self.block_size).save(self.postfix)
                     lst.append(pygame.image.load(resize_img).convert())
         return [bottom, up, right, left]

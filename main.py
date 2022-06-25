@@ -13,12 +13,14 @@ import image_util
 from math import sqrt
 
 
-GROW_SPEED = 10
-BLOCK_SIZE = 120
-image_util.BLOCK_SIZE = BLOCK_SIZE
+pygame.init()
 
-WIDTH = 1920
-HEIGHT = 1080
+
+GROW_SPEED = 10
+BLOCK_SIZE = pygame.display.Info().current_w // 16
+
+WIDTH = pygame.display.Info().current_w
+HEIGHT = pygame.display.Info().current_h
 FPS = 30
 
 BLACK = (0, 0, 0)
@@ -49,7 +51,7 @@ else:
     LOAD_DATA = [100, 100], (0, 0)
 
 
-texture_loader = TextureLoader()
+texture_loader = TextureLoader(BLOCK_SIZE)
 
 
 class Plant(pygame.sprite.Sprite):
@@ -75,14 +77,14 @@ class Plant(pygame.sprite.Sprite):
 class Grass(Plant):
     def __init__(self, *args, **kwargs):
         Plant.__init__(self, *args, **kwargs)
-        self.image = TextureLoader().get_textures('grass')[self.seed // 2]
+        self.image = texture_loader.get_textures('grass')[self.seed // 2]
         self.set_rect_and_coord()
 
 
 class Ground(Plant):
     def __init__(self, *args):
         Plant.__init__(self, *args)
-        self.image = TextureLoader().get_textures('ground')[0]
+        self.image = texture_loader.get_textures('ground')[0]
         self.set_rect_and_coord()
 
 
@@ -116,7 +118,7 @@ class House(pygame.sprite.Sprite):
     def __init__(self, coord):
         pygame.sprite.Sprite.__init__(self)
         self.coord = coord
-        self.image = TextureLoader().get_textures('house', 150)[0]
+        self.image = texture_loader.get_textures('house', 150)[0]
         self.set_rect_and_coord()
 
     def set_rect_and_coord(self):
@@ -212,7 +214,7 @@ class NPC(pygame.sprite.Sprite):
         :param world_coord: координаты мира(World.x, World.y)
         """
         pygame.sprite.Sprite.__init__(self)
-        self.texture = TextureLoader().get_person_textures('npc')
+        self.texture = texture_loader.get_person_textures('npc')
         self.image = self.texture[0][0]
         self.image.set_colorkey(BACKGROUND_COLOR)
         self.rect = self.image.get_rect()
@@ -306,7 +308,7 @@ class Ded(pygame.sprite.Sprite):
     def __init__(self, coord, world_obj: World):
         pygame.sprite.Sprite.__init__(self)
         self.now = 0
-        self.texture = TextureLoader().get_person_textures('ded')
+        self.texture = texture_loader.get_person_textures('ded')
         self.image = self.texture[0][0]
         self.image.set_colorkey(BACKGROUND_COLOR)
         self.rect = self.image.get_rect()
@@ -398,7 +400,6 @@ class Game:
         self.game_loop()
 
     def init_game(self):
-        pygame.init()
         pygame.font.init()
         self.screen = pygame.display.set_mode((WIDTH, HEIGHT), pygame.FULLSCREEN)
         pygame.display.set_caption("My Game")
