@@ -49,6 +49,9 @@ else:
     LOAD_DATA = [100, 100], (0, 0)
 
 
+texture_loader = TextureLoader()
+
+
 class Plant(pygame.sprite.Sprite):
     def __init__(self, coord, max_seed=3):
         pygame.sprite.Sprite.__init__(self)
@@ -95,7 +98,7 @@ class TextureObject(pygame.sprite.Sprite):
         super().__init__()
         self.coord = coord
         self.image = texture_loader.get_texture(texture_name)
-        self.set_rect_and_coord
+        self.set_rect_and_coord()
 
     def update(self):
         pass
