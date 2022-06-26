@@ -1,7 +1,7 @@
 map_lst = [
     [
         [
-            ['grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass',
+            ['ground', 'plank', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass',
              'grass', 'grass', 'grass', 'grass'],
             ['grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass', 'grass',
              'grass', 'grass', 'grass', 'grass'],

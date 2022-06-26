@@ -6,6 +6,7 @@ import pygame
 from PIL import Image
 
 import blocks
+from map_loader import MapStore
 import xml.etree.ElementTree as ET
 from image_util import TextureLoader
 from inventory import Inventory, Item
@@ -52,6 +53,7 @@ else:
 
 
 texture_loader = TextureLoader(BLOCK_SIZE)
+map_store = MapStore('./maps')
 
 
 class Plant(pygame.sprite.Sprite):
@@ -150,13 +152,9 @@ class World:
                 for i, v in enumerate(value2):
                     tmp_lst = []
                     for j, obj_str in enumerate(v):
-                        if obj_str == 'grass':
-                            tmp_lst.append(Grass([j * BLOCK_SIZE, i * BLOCK_SIZE]))
-                        if obj_str == 'ground':
-                            tmp_lst.append(Ground([j * BLOCK_SIZE, i * BLOCK_SIZE]))
-                        if obj_str == 'house':
+                        elif obj_str == 'house':
                             # TODO: Временно заполняется землёй
-                            up_obj_map_list.append(Grass([j * BLOCK_SIZE, i * BLOCK_SIZE]))
+                            up_obj_map_list.append(
                             # up_obj_map_list.append(House([j * BLOCK_SIZE, i * BLOCK_SIZE]))
                         else:
                             tmp_lst.append(TextureObject([j * BLOCK_SIZE, i * BLOCK_SIZE], obj_str))
@@ -251,21 +249,18 @@ class NPC(pygame.sprite.Sprite):
         return ret
 
     def move(self, direction):
+        self.step = True
         if direction == RIGHT:
             self.rect.x += NPC.SPEED
-            self.step = True
             self.side = RIGHT
         elif direction == LEFT:
             self.rect.x -= NPC.SPEED
-            self.step = True
             self.side = LEFT
         elif direction == FORWARD:
             self.rect.y -= NPC.SPEED
-            self.step = True
             self.side = BACKWARD
         elif direction == BACKWARD:
             self.rect.y += NPC.SPEED
-            self.step = True
             self.side = FORWARD
 
     def update(self):

@@ -44,7 +44,6 @@ class ResizeImg:
 
 class TextureLoader:
     postfix = '_resize.png'
-    local_folder = os.path.join(self.img_folder, folder)
     game_folder = './'
     img_folder = os.path.join(game_folder, 'res', 'images')
 
@@ -52,16 +51,15 @@ class TextureLoader:
         self.block_size = block_size
 
     def get_item_textures(self, item_name: str, size=60):
-        img = os.path.join(self.img_folder, item_name)
+        img = os.path.join(self.img_folder, "Items", item_name)
         resize_img = ResizeImg(img).by_width(size).save(self.postfix)
         return resize_img
 
     def get_textures(self, folder, size=None):
         if size is None:
             size = self.block_size
-        print('resize to', size)
         img_list = []
-
+        local_folder = os.path.join(self.img_folder, folder)
         for i in os.walk(os.path.join(local_folder)):
             for j in i[-1]:
                 if j.endswith(self.postfix):
@@ -74,9 +72,9 @@ class TextureLoader:
     def get_texture(self, texture_name: str, size=None):
         if size is None:
             size = self.block_size
-        resize_img = ResizeImg(os.path.join(local_folder, j)).by_width(size).save(self.postfix)
-        img_list.append(pygame.image.load(resize_img).convert())
-        return self.get_textures(texture_name, size)[0]
+        image_path = os.path.join(self.img_folder, "blocks", texture_name + '.png')
+        resize_img = ResizeImg(image_path).by_width(size).save(self.postfix)
+        return pygame.image.load(resize_img).convert()
 
     def get_person_textures(self, folder):
         left = []
