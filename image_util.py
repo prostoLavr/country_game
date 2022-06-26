@@ -44,10 +44,11 @@ class ResizeImg:
 
 class TextureLoader:
     postfix = '_resize.png'
+    local_folder = os.path.join(self.img_folder, folder)
+    game_folder = './'
+    img_folder = os.path.join(game_folder, 'res', 'images')
 
     def __init__(self, block_size):
-        game_folder = './'
-        self.img_folder = os.path.join(game_folder, 'res', 'images')
         self.block_size = block_size
 
     def get_item_textures(self, item_name: str, size=60):
@@ -59,7 +60,6 @@ class TextureLoader:
         if size is None:
             size = self.block_size
         print('resize to', size)
-        local_folder = os.path.join(self.img_folder, folder)
         img_list = []
 
         for i in os.walk(os.path.join(local_folder)):
@@ -72,9 +72,11 @@ class TextureLoader:
         return img_list
 
     def get_texture(self, texture_name: str, size=None):
-         if size is None:
+        if size is None:
             size = self.block_size
-         return self.get_textures(texture_name, size)[0]
+        resize_img = ResizeImg(os.path.join(local_folder, j)).by_width(size).save(self.postfix)
+        img_list.append(pygame.image.load(resize_img).convert())
+        return self.get_textures(texture_name, size)[0]
 
     def get_person_textures(self, folder):
         left = []
