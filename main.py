@@ -423,7 +423,8 @@ def block_names_to_sprites(block_names_map):
     block_group = pygame.sprite.Group()
     for i, line in enumerate(block_names_map):
         for j, block_name in enumerate(line):
-            block_group.add(TextureObject([j * BLOCK_SIZE, i * BLOCK_SIZE], block_name))
+            if block_name is not None:
+                block_group.add(TextureObject([j * BLOCK_SIZE, i * BLOCK_SIZE], block_name))
     return block_group
 
 
@@ -458,10 +459,10 @@ class MapGroup:
 
     def __create_map_dict(self):
         map_dict = {}
-        for root, dirs, files in os.walk('maps'):
+        for root, dirs, files in os.walk('res/maps'):
             for file in files:
                 if file.startswith(self.__map_name) and file.endswith('.pickle'):
-                    print('load map:', self.__map_name)
+                    print('load map:', file)
                     coord = tuple(map(int, file[:-7].split('_')[1:]))
                     block_names_map = self._load_map(os.path.join(root, file))
                     map_dict[coord] = block_names_to_sprites(block_names_map)
