@@ -146,7 +146,7 @@ class World:
                             pass
                             # up_obj_map_list.append(House([j * BLOCK_SIZE, i * BLOCK_SIZE]))
                         else:
-                            tmp_lst.append(TextureObject([j * BLOCK_SIZE, i * BLOCK_SIZE], obj_str))
+                            tmp_lst.append(TextureObject([j * BLOCK_SIZE, i * BLOCK_SIZE], str(obj_str)))
                     tmp_lst1.append(tmp_lst)
                 tmp_lst2.append(tmp_lst1)
             obj_map_list.append(tmp_lst2)
