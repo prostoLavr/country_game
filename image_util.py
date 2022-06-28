@@ -4,7 +4,8 @@ import pygame
 from PIL import Image
 
 
-BLOCK_SIZE =50 
+BLOCK_SIZE = 50
+
 
 def set_block_size(value: int):
     global BLOCK_SIZE
@@ -73,8 +74,11 @@ class TextureLoader:
         if size is None:
             size = self.block_size
         image_path = os.path.join(self.img_folder, "blocks", texture_name + '.png')
-        resize_img = ResizeImg(image_path).by_width(size).save(self.postfix)
-        return pygame.image.load(resize_img).convert()
+        if os.path.isfile(image_path):
+            resize_img = ResizeImg(image_path).by_width(size).save(self.postfix)
+            return pygame.image.load(resize_img).convert()
+        else:
+            raise ValueError('Random texture is not available now')
 
     def get_person_textures(self, folder):
         left = []

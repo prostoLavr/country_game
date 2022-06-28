@@ -1,17 +1,17 @@
-import os
 import random
 
 import dill
 import pygame
-from PIL import Image
 
 import blocks
-from map_loader import MapStore
 import xml.etree.ElementTree as ET
 from image_util import TextureLoader
 from inventory import Inventory, Item
-import image_util
+import pickle
+import os
 from math import sqrt
+from dataclasses import dataclass
+from enum import Enum
 
 
 pygame.init()
@@ -53,7 +53,19 @@ else:
 
 
 texture_loader = TextureLoader(BLOCK_SIZE)
-map_store = MapStore('./maps')
+
+
+@dataclass
+class DedMoveFlags:
+    left: bool
+    right: bool
+    forward: bool
+    backward: bool
+
+
+class EventProcessStatus(Enum):
+    NOTHING = 0
+    EXIT = 1
 
 
 class Plant(pygame.sprite.Sprite):
@@ -76,27 +88,6 @@ class Plant(pygame.sprite.Sprite):
         self.rect.y = self.coord[1]
 
 
-class Grass(Plant):
-    def __init__(self, *args, **kwargs):
-        Plant.__init__(self, *args, **kwargs)
-        self.image = texture_loader.get_textures('grass')[self.seed // 2]
-        self.set_rect_and_coord()
-
-
-class Ground(Plant):
-    def __init__(self, *args):
-        Plant.__init__(self, *args)
-        self.image = texture_loader.get_textures('ground')[0]
-        self.set_rect_and_coord()
-
-
-class Stump(Plant):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.image = texture_loader.get_texture('stump')[0]
-        self.set_rect_and_coord()
-
-
 class TextureObject(pygame.sprite.Sprite):
     def __init__(self, coord: list[int, int], texture_name: str):
         super().__init__()
@@ -112,8 +103,6 @@ class TextureObject(pygame.sprite.Sprite):
         self.rect.center = (WIDTH / 2, HEIGHT / 2)
         self.rect.x = self.coord[0]
         self.rect.y = self.coord[1]
-
-
 
 
 class House(pygame.sprite.Sprite):
@@ -152,9 +141,9 @@ class World:
                 for i, v in enumerate(value2):
                     tmp_lst = []
                     for j, obj_str in enumerate(v):
-                        elif obj_str == 'house':
+                        if obj_str == 'house':
                             # TODO: Временно заполняется землёй
-                            up_obj_map_list.append(
+                            pass
                             # up_obj_map_list.append(House([j * BLOCK_SIZE, i * BLOCK_SIZE]))
                         else:
                             tmp_lst.append(TextureObject([j * BLOCK_SIZE, i * BLOCK_SIZE], obj_str))
@@ -300,7 +289,7 @@ class Ded(pygame.sprite.Sprite):
     DED_CROSS_SPEED = DED_SPEED * sqrt(2)
     DED_STEP_SPEED = 4  # The less number the faster steps.
 
-    def __init__(self, coord, world_obj: World):
+    def __init__(self, coord):
         pygame.sprite.Sprite.__init__(self)
         self.now = 0
         self.texture = texture_loader.get_person_textures('ded')
@@ -309,11 +298,14 @@ class Ded(pygame.sprite.Sprite):
         self.rect = self.image.get_rect()
         self.rect.center = (WIDTH / 2, HEIGHT / 2)
 
-        self.world = world_obj
         self.coord = coord
         self.step = False
         self.side = 0
         self.inventory = Inventory()
+    
+    def go_by_move_flags_object(self, ded_move_flags: DedMoveFlags):
+        self.go_by_flags(ded_move_flags.forward, ded_move_flags.backward, 
+                         ded_move_flags.left, ded_move_flags.right)
 
     def go_by_flags(self, forward, backward, left, right):
         if left:
@@ -330,7 +322,7 @@ class Ded(pygame.sprite.Sprite):
             self.side = BACKWARD
         self.step = any((left, right, forward, backward))
 
-    def update(self, game_obj: 'Game'):
+    def update(self, map_group):
         self.rect.x = self.coord[0]
         self.rect.y = self.coord[1]
         if self.step:
@@ -340,52 +332,140 @@ class Ded(pygame.sprite.Sprite):
             self.now = 0
             self.image = self.texture[self.side][0]
         self.image.set_colorkey(BACKGROUND_COLOR)
-
+        x, y = map_group.coord
         if self.rect.right > WIDTH:
-            if self.world.is_right():
+            if map_group.can_coord_be((x, y + 1)):
                 if self.rect.left > WIDTH:
                     self.rect.x = self.coord[0] = 0
-                    self.world.right()
+                    map_group.coord = (x, y + 1)
             else:
                 self.coord[0] = WIDTH - self.rect.width
 
         if self.rect.left < 0:
-            if self.world.is_left():
+            if map_group.can_coord_be((x, y - 1)):
                 if self.rect.right < 0:
                     self.rect.x = self.coord[0] = WIDTH - self.rect.width
-                    self.world.left()
+                    map_group.coord = (x, y - 1)
             else:
                 self.coord[0] = 0
 
         if self.rect.bottom > HEIGHT:
-            if self.world.is_up():
+            if map_group.can_coord_be((x + 1, y)):
                 if self.rect.top > HEIGHT:
                     self.rect.y = self.coord[1] = 0
-                    self.world.up()
+                    map_group.coord = (x + 1, y)
             else:
                 self.coord[1] = HEIGHT - self.rect.height
 
         if self.rect.top < 0:
-            if self.world.is_down():
+            if map_group.can_coord_be((x - 1, y)):
                 if self.rect.bottom < 0:
                     self.rect.y = self.coord[1] = HEIGHT - self.rect.height
-                    self.world.down()
+                    map_group.coord = (x - 1, y)
             else:
                 self.coord[1] = 0
 
         self.step = False
 
-        if pygame.sprite.spritecollide(self, game_obj.world.get_objects_draw(), False):
-            for i in pygame.sprite.spritecollide(self, game_obj.world.get_objects_draw(), False):
-                if isinstance(i, Item):
-                    self.inventory.addItem(i)
-                    self.world.objects[self.world.y][self.world.x].remove(i)
-                    game_obj.items_group.remove(i)
+        # if pygame.sprite.spritecollide(self, game_obj.world.get_objects_draw(), False):
+        #     for i in pygame.sprite.spritecollide(self, game_obj.world.get_objects_draw(), False):
+        #         if isinstance(i, Item):
+        #             self.inventory.addItem(i)
+        #             self.world.objects[self.world.y][self.world.x].remove(i)
+        #             game_obj.items_group.remove(i)
 
     def save_preload(self):
         self.texture = None
         self.image = None
         return self
+
+
+class EventProcessor:
+    def __init__(self):
+        self.ded_flags = DedMoveFlags(False, False, False, False)
+        self.running = True
+
+    def process_events(self, events):
+        for event in events:
+            self._process_event(event)
+
+    def _process_event(self, event):
+        if event.type == pygame.QUIT:
+            self.running = False
+        if event.type in (pygame.KEYDOWN, pygame.KEYUP):
+            if event.key in (pygame.K_LEFT, pygame.K_a):
+                self.ded_flags.left = event.type == pygame.KEYDOWN
+            if event.key in (pygame.K_RIGHT, pygame.K_d):
+                self.ded_flags.right = event.type == pygame.KEYDOWN
+            if event.key in (pygame.K_UP, pygame.K_w):
+                self.ded_flags.backward = event.type == pygame.KEYDOWN
+            if event.key in (pygame.K_DOWN, pygame.K_s):
+                self.ded_flags.forward = event.type == pygame.KEYDOWN
+
+
+class SpriteStore:
+    def __init__(self):
+        self.ded_group = pygame.sprite.Group()
+        self.nps_group = pygame.sprite.Group()
+        self.item_group = pygame.sprite.Group()
+
+    def add_ded(self, ded: Ded):
+        self.ded_group.add(ded)
+
+    def add_npc(self, npc: NPC):
+        self.nps_group.add(npc)
+
+    def add_item(self, item: Item):
+        self.item_group.add(item)
+
+
+def block_names_to_sprites(block_names_map):
+    block_group = pygame.sprite.Group()
+    for i, line in enumerate(block_names_map):
+        for j, block_name in enumerate(line):
+            block_group.add(TextureObject([j * BLOCK_SIZE, i * BLOCK_SIZE], block_name))
+    return block_group
+
+
+class MapStore:
+    def __init__(self, maps_dir: str):
+        self.maps_dir = maps_dir
+
+    def load_maps(self, maps_group_name: str, start_coord=(0, 0)):
+        maps_group_name = maps_group_name.replace('_', '-')
+        return MapGroup(maps_group_name, start_coord)
+
+
+class MapGroup:
+    def __init__(self, map_name: str, start_coord: tuple[int, int]):
+        self.__map_name = map_name
+        self.__dict_map_coord = self.__create_map_dict()
+        self.coord = list(start_coord)
+        self.sprite_store = SpriteStore()
+        self.__cached_coord = None
+        self.__cached_map = None
+
+    def get_current_map(self):
+        return self.__dict_map_coord[tuple(self.coord)]
+
+    def _load_map(self, path: str):
+        with open(path, 'rb') as map_file:
+            names_map = pickle.load(map_file)
+        return names_map
+
+    def can_coord_be(self, coord):
+        return coord in self.__dict_map_coord.keys()
+
+    def __create_map_dict(self):
+        map_dict = {}
+        for root, dirs, files in os.walk('maps'):
+            for file in files:
+                if file.startswith(self.__map_name) and file.endswith('.pickle'):
+                    print('load map:', self.__map_name)
+                    coord = tuple(map(int, file[:-7].split('_')[1:]))
+                    block_names_map = self._load_map(os.path.join(root, file))
+                    map_dict[coord] = block_names_to_sprites(block_names_map)
+        return map_dict
 
 
 class Game:
@@ -399,112 +479,37 @@ class Game:
         self.screen = pygame.display.set_mode((WIDTH, HEIGHT), pygame.FULLSCREEN)
         pygame.display.set_caption("My Game")
         self.clock = pygame.time.Clock()
-        self.ded_grp = pygame.sprite.Group()
-        self.npc_group = pygame.sprite.Group()
-        self.items_group = pygame.sprite.Group()
         self.world = World(WORLD_MAP, *LOAD_DATA[1])
+        self.map_store = MapStore('./')
+        self.sprite_store = SpriteStore()
+        self.map_group = self.map_store.load_maps('ded_home')
         self.font = pygame.font.Font(pygame.font.match_font('arial'), 22)
         self.ded_init()
 
     def ded_init(self):
-        self.ded = Ded(LOAD_DATA[0], self.world)
-        self.ded_grp.add(self.ded)
-        self.npc_group.add(NPC((0, 0), self.world, (0, 0)))
-        # Item('test', self.items_group, self.world, (0, 0), (200, 200))
+        self.ded = Ded(LOAD_DATA[0])
+        self.sprite_store.add_ded(self.ded)
 
     # Обработка событий
     def game_loop(self):
-        left_flag = False
-        right_flag = False
-        forward_flag = False
-        backward_flag = False
-        show_inv = False
         running = True
+        event_processor = EventProcessor()
         while running:
-            map_now = pygame.sprite.Group()
-            for i in self.world.get_lst():
-                for j in i:
-                    map_now.add(j)
-            map_now.update()
-            self.ded_grp.update(game_obj=self)
-            self.screen.fill(WHITE)
-            map_now.draw(self.screen)
-            self.ded_grp.draw(self.screen)
-            for n in self.world.get_objects_draw():
-                n.update()
-                self.screen.blit(n.image, n.rect)
-            for event in pygame.event.get():
-                if event.type == pygame.QUIT:
-                    with open(FILE_SAVE, 'wb') as file:
-                        dill.dump([self.ded.coord, [self.world.x, self.world.y]],
-                                  file, protocol=dill.HIGHEST_PROTOCOL)
-                    running = False
-                if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                    if self.dialog:
-                        if not self.dialog['answers']:
-                            t = self.font.render(f"*окончить диалог*", True, GRAY, DARKGRAY)
-                            if t.get_rect(topleft=(10, HEIGHT - 75)).collidepoint(pygame.mouse.get_pos()):
-                                self.dialog['npc_object'].can_move = True
-                                self.dialog = None
-                        else:
-                            for i, a in enumerate(self.dialog['answers']):
-                                t = self.font.render(f"{i + 1}) {a['text']}", True, GRAY, DARKGRAY)
-                                if t.get_rect(topleft=(10, HEIGHT - (75 - 25 * i)))\
-                                        .collidepoint(pygame.mouse.get_pos()):
-                                    self.dialog = self.dialog['npc_object'].get_dialog(self.dialog['dialog_name'],
-                                                                                       a['to'])
-                if event.type == pygame.KEYDOWN:
-                    if event.key == pygame.K_LEFT:
-                        left_flag = True
-                    if event.key == pygame.K_UP:
-                        backward_flag = True
-                    if event.key == pygame.K_DOWN:
-                        forward_flag = True
-                    if event.key == pygame.K_RIGHT:
-                        right_flag = True
-                    if event.key == pygame.K_d:  # Начать диалог
-                        if self.dialog is None:
-                            dialog_npc = None
-                            for n in self.world.get_objects_draw():
-                                if n.rect.centerx in range(self.ded.rect.centerx - BLOCK_SIZE,
-                                                           self.ded.rect.centerx + BLOCK_SIZE) \
-                                        and n.rect.centery in range(self.ded.rect.centery - BLOCK_SIZE,
-                                                                    self.ded.rect.centery + BLOCK_SIZE):
-                                    dialog_npc = n
-                                    break
-                            if dialog_npc:
-                                dialog_npc.can_move = False
-                                self.dialog = dialog_npc.get_dialog('test')  # TODO получение диалогов нпс
-                    if event.key == pygame.K_i:
-                        show_inv = not show_inv
-                if event.type == pygame.KEYUP:
-                    if event.key == pygame.K_LEFT:
-                        left_flag = False
-                    if event.key == pygame.K_UP:
-                        backward_flag = False
-                    if event.key == pygame.K_DOWN:
-                        forward_flag = False
-                    if event.key == pygame.K_RIGHT:
-                        right_flag = False
-            self.ded.go_by_flags(forward_flag, backward_flag, left_flag, right_flag)
+            event_processor.process_events(pygame.event.get())
+            running = event_processor.running
+            ded_move_flags = event_processor.ded_flags
+            self.ded.go_by_move_flags_object(ded_move_flags)
 
-            if self.dialog:  # Отображение диалога
-                self.screen.blit(self.font.render(self.dialog['text'], True, (60, 60, 60), (180, 180, 180, 180)),
-                                 (10, HEIGHT - 100))
-                if not self.dialog['answers']:
-                    t = self.font.render(f"*окончить диалог*", True, GRAY, DARKGRAY)
-                    if t.get_rect(topleft=(10, HEIGHT - 75)).collidepoint(pygame.mouse.get_pos()):
-                        t = self.font.render(f"*окончить диалог*", True, BLACK, DARKGRAY)
-                    self.screen.blit(t, (10, HEIGHT - 75))
-                else:
-                    for i, a in enumerate(self.dialog['answers']):
-                        t = self.font.render(f"{i + 1}) {a['text']}", True, GRAY, DARKGRAY)
-                        if t.get_rect(topleft=(10, HEIGHT - (75 - 25 * i))).collidepoint(pygame.mouse.get_pos()):
-                            t = self.font.render(f"{i + 1}) {a['text']}", True, BLACK, DARKGRAY)
-                        self.screen.blit(t, (10, HEIGHT - (75 - 25 * i)))
+            current_map = self.map_group.get_current_map()
 
-            if show_inv:
-                self.ded.inventory.draw(self.screen)
+            self.sprite_store.ded_group.update(self.map_group)
+            current_map.update()
+            self.screen.fill(BLACK)
+            current_map.draw(self.screen)
+            self.sprite_store.ded_group.draw(self.screen)
+            # for n in self.world.get_objects_draw():
+            #     n.update()
+            #     self.screen.blit(n.image, n.rect)
 
             pygame.display.flip()
             self.clock.tick(FPS)
