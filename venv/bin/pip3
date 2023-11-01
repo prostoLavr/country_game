@@ -1,4 +1,4 @@
-#!/home/lawrence/Projects/country_game/venv/bin/python
+#!/home/lawrence/Projects/lyceum/country_game/venv/bin/python3
 # -*- coding: utf-8 -*-
 import re
 import sys

@@ -1,9 +1,9 @@
 import random
 
-import dill
+import pickle
 import pygame
 
-import blocks
+import things 
 import xml.etree.ElementTree as ET
 from image_util import TextureLoader
 from inventory import Inventory, Item
@@ -43,11 +43,11 @@ BACKGROUND_COLOR = (204, 51, 51)
 OPEN_SAVE = False 
 FILE_SAVE = 'save'
 
-WORLD_MAP = blocks.map_lst
+WORLD_THINGS_MAP = things.things_lst
 
 if OPEN_SAVE:
     with open(FILE_SAVE, 'rb') as file:
-        LOAD_DATA = dill.load(file)
+        LOAD_DATA = pickle.load(file)
 else:
     LOAD_DATA = [100, 100], (0, 0)
 
@@ -142,9 +142,7 @@ class World:
                     tmp_lst = []
                     for j, obj_str in enumerate(v):
                         if obj_str == 'house':
-                            # TODO: Временно заполняется землёй
-                            pass
-                            # up_obj_map_list.append(House([j * BLOCK_SIZE, i * BLOCK_SIZE]))
+                            up_obj_map_list.append(House([j * BLOCK_SIZE, i * BLOCK_SIZE]))
                         else:
                             tmp_lst.append(TextureObject([j * BLOCK_SIZE, i * BLOCK_SIZE], str(obj_str)))
                     tmp_lst1.append(tmp_lst)
@@ -480,10 +478,9 @@ class Game:
         self.screen = pygame.display.set_mode((WIDTH, HEIGHT), pygame.FULLSCREEN)
         pygame.display.set_caption("My Game")
         self.clock = pygame.time.Clock()
-        self.world = World(WORLD_MAP, *LOAD_DATA[1])
         self.map_store = MapStore('./')
         self.sprite_store = SpriteStore()
-        self.map_group = self.map_store.load_maps('ded_home')
+        self.map_group = self.map_store.load_maps('start')
         self.font = pygame.font.Font(pygame.font.match_font('arial'), 22)
         self.ded_init()
 
@@ -508,9 +505,6 @@ class Game:
             self.screen.fill(BLACK)
             current_map.draw(self.screen)
             self.sprite_store.ded_group.draw(self.screen)
-            # for n in self.world.get_objects_draw():
-            #     n.update()
-            #     self.screen.blit(n.image, n.rect)
 
             pygame.display.flip()
             self.clock.tick(FPS)
