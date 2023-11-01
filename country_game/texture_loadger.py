@@ -1,4 +1,5 @@
 import os
+import config
 
 import pygame
 from PIL import Image
@@ -45,11 +46,9 @@ class ResizeImg:
 
 class TextureLoader:
     postfix = '_resize.png'
-    game_folder = './'
+    game_folder = '.'
     img_folder = os.path.join(game_folder, 'res', 'images')
-
-    def __init__(self, block_size):
-        self.block_size = block_size
+    block_size = config.BLOCK_SIZE
 
     def get_item_textures(self, item_name: str, size=60):
         img = os.path.join(self.img_folder, "Items", item_name)

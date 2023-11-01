@@ -1,10 +1,19 @@
 from openpyxl import load_workbook
 import os
 import pickle
+import argparse
 
 
 def main():
-    read_file = input('Excel file: ').strip()
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-f', '--file', type=str, default=None)
+    parser.add_argument('-m', '--map', type=str, default=None)
+    args = parser.parse_args()
+    if args.file is None:
+        read_file = input('Excel file: ').strip()
+    else:
+        read_file = args.file
+
     if not os.path.isfile(read_file):
         return 'File is not found'
 
@@ -14,11 +23,13 @@ def main():
 
     if not map_list:
         return 'File is empty' 
-
-    map_name = input('Map name: ').strip().replace('_', '-')
+    if args.map is None:
+        map_name = input('Map name: ').strip().replace('_', '-')
+    else:
+        map_name = args.map
 
     def formating(i, j):
-        return os.path.join('res', 'maps', f'{map_name}_{i}_{j}.pickle')
+        return os.path.join('res', 'compiled_maps', f'{map_name}_{i}_{j}.pickle')
 
     print(f'map shape: {(len(map_list), len(map_list[0]))}')
     for i in range(len(map_list) // 9):
@@ -29,9 +40,6 @@ def main():
                 with open(write_file, 'wb') as mapfile:
                     pickle.dump(map_to_save, mapfile)
                     print(f'File {write_file} saved')
-
-
-
     return ''
 
 

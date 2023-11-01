@@ -1,9 +1,6 @@
 # Project exclude paths
-/venv/
-.zip
-/res/NoWorkTextures/
-.idea/
-.gitignore
+venv
+.idea
 save
 **/*resize*.png
 **/__pycache__

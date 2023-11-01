@@ -1,7 +1,7 @@
 from typing import List, Union
 
 import pygame
-from image_util import TextureLoader
+from country_game.texture_loadger import TextureLoader
 
 
 class Inventory:
