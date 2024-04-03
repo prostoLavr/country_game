@@ -3,11 +3,12 @@ from enum import Enum
 
 import pygame
 
+from config import DedMoveFlags
 from country_game import config
+from country_game import stores
+from country_game.ar.transformer import Transformer
 from country_game.objects.ded import Ded
 from country_game.texture_loadger import TextureLoader
-from country_game import stores
-from config import DedMoveFlags
 
 
 if config.OPEN_SAVE:
@@ -36,6 +37,11 @@ class House(pygame.sprite.Sprite):
         self.rect.center = (config.WIDTH / 2, config.HEIGHT / 2)
         self.rect.x = self.coord[0]
         self.rect.y = self.coord[1]
+
+
+class ARProcessor:
+    def __init__(self, width: int, height: int):
+        self.transformer = Transformer(width, height)
 
 
 class EventProcessor:
@@ -88,6 +94,9 @@ class Game:
     def game_loop(self):
         running = True
         event_processor = EventProcessor()
+        ar_processor = ARProcessor(
+            self.screen.get_width(), self.screen.get_height()
+        )
         while running:
             event_processor.process_events(pygame.event.get())
             running = event_processor.running
