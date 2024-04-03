@@ -20,6 +20,8 @@ def main():
     wb = load_workbook(read_file)
     ws = wb.active
     map_list = [[cell.value for cell in row] for row in ws.iter_rows()]
+    map_list = [[('air' if cell is None else cell) for cell in row] for row in map_list]
+    print(map_list)
 
     if not map_list:
         return 'File is empty' 

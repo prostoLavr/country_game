@@ -1,7 +1,7 @@
 import cv2 as cv
 import numpy as np
 
-from .detector import Detector
+from detector import Detector
 
 
 class Transformer:
@@ -37,3 +37,13 @@ class Transformer:
         # img = cv.imread('arnto.jpg')
         dst = cv.warpPerspective(img, self.m, (self.w, self.h))
         return dst
+
+
+if __name__ == '__main__':
+    trans = Transformer()
+    detector = Detector()
+    while True:
+        frame = detector.get_raw_frame()
+        frame = trans.transform(frame)
+        detects = detector.detect(frame)
+        print(detects)

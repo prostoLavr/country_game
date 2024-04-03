@@ -24,6 +24,7 @@ class TextureObject(pygame.sprite.Sprite):
         super().__init__()
         self.coord = coord
         self.image = texture_loader.get_texture(texture_name)
+        #self.image.set_colorkey(self.image.get_at((0, 0)))
         self.set_rect_and_coord()
 
     def update(self):
