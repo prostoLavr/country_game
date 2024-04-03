@@ -1,0 +1,7 @@
+Metadata-Version: 2.1
+Name: country_game
+Version: 0.0.1
+Summary: Country Game
+Platform: POSIX
+Requires-Dist: pygame
+Requires-Dist: pillow
