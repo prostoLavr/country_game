@@ -1,6 +1,7 @@
 # Project exclude paths
-venv
-.idea
+**/*..egg-info/
+**/venv
+**/.idea
 save
 **/*resize*.png
 **/__pycache__

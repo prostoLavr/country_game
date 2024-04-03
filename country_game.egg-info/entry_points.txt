@@ -1,0 +1,2 @@
+[console_scripts]
+run_game = country_game.main:main
