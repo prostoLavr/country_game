@@ -57,6 +57,8 @@ class EventProcessor:
         if event.type == pygame.QUIT:
             self.running = False
         if event.type in (pygame.KEYDOWN, pygame.KEYUP):
+            if event.key == pygame.K_ESCAPE:
+                self.running = False
             if event.key in (pygame.K_LEFT, pygame.K_a):
                 self.ded_flags.left = event.type == pygame.KEYDOWN
             if event.key in (pygame.K_RIGHT, pygame.K_d):
