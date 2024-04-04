@@ -1,7 +1,7 @@
 import cv2 as cv
 import numpy as np
 
-from detector import Detector
+from country_game.ar.detector import Detector
 
 
 class Transformer:
@@ -13,7 +13,7 @@ class Transformer:
         detector = Detector()
         reds = []
         greens = []
-        while len(reds) != 1 and len(greens) != 3:
+        while len(reds) != 1 or len(greens) != 3:
             detections = detector.detect()
             reds = [
                 (detection[0], detection[1])
@@ -23,8 +23,10 @@ class Transformer:
                 (detection[0], detection[1])
                 for detection in detections if detection[3] == 'greens'
             ]
+            print(greens)
         red = reds[0]
         greens.sort(key=lambda d: d[0] ** 2 + d[1] ** 2)
+        print(greens)
         gr2 = greens[0]
         gr1 = greens[1]
         gr3 = greens[2]
